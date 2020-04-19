@@ -1,0 +1,7 @@
+{
+	"compilerOptions": {
+		"sourceMap": true,
+		"strictNullChecks": true,
+		"outDir": "build"
+	}
+}

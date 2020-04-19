@@ -1,0 +1,37 @@
+{
+	"name": "compilerardos",
+	"version": "0.0.1",
+	"description": "",
+	"main": "build/main.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"build": "tsc && node build/main.js",
+		"prettify": "prettier -c .prettierrc  --write ./**/*.ts"
+	},
+	"devDependencies": {
+		"@types/express": "^4.17.2",
+		"husky": "^4.0.10",
+		"lint-staged": "^10.0.1",
+		"prettier": "^1.19.1",
+		"ts-loader": "^6.2.1",
+		"typescript": "^3.8.3",
+		"webpack": "^4.41.5",
+		"webpack-cli": "^3.3.10",
+		"webpack-dev-server": "^3.10.1"
+	},
+	"husky": {
+		"hooks": {
+			"pre-commit": "lint-staged"
+		}
+	},
+	"lint-staged": {
+		"*.{js,css,json,md,ts}": [
+			"prettier --write"
+		]
+	},
+	"dependencies": {
+		"@types/pegjs": "^0.10.1",
+		"express": "^4.17.1",
+		"pegjs": "^0.10.0"
+	}
+}
