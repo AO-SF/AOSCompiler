@@ -1,25 +1,17 @@
+let parser = require('../src/arithmeticgrammar.js');
 
-console.log("test");
+if (process.argv.length!=4) {
+	console.log("bad arguments"); // TODO: improve this
+	process.exit(1);
+}
 
-/*
+const inputPath=process.argv[2];
+const outputPath=process.argv[3];
 
-.....
+let fs=require('fs');
+let path=require('path');
+const inputData = fs.readFileSync(path.resolve(__dirname, inputPath), 'utf8')
 
-import {
-	devConsoleExecute,
-	devConsoleMapEditScrollEvent,
-	devConsoleMapEditClickEvent,
-	devConsoleMapEditMoveEvent,
-	devConsoleMapEditTileToolbarEntryClick,
-	devConsoleMapEditTileToolbarEntrySelect,
-} from './devconsole';
-import { Engine, EngineState } from './arithmeticgrammar.js';
+const result=parser.parse(inputData);
 
-
-*/
-
-import { parser } from './arithmeticgrammar'
-
-parser.parse("abba"); // returns ["a", "b", "b", "a"]
-
-parser.parse("abcd"); // throws an exception
+console.log(result); // ..... TEMP
