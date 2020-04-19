@@ -33,6 +33,7 @@
 	"dependencies": {
 		"@types/pegjs": "^0.10.1",
 		"express": "^4.17.1",
+		"nearley": "^2.19.2",
 		"pegjs": "^0.10.0"
 	}
 }
