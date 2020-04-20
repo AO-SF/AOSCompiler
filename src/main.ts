@@ -16,7 +16,7 @@ let path=require('path');
 const inputData = fs.readFileSync(path.resolve(__dirname, inputPath), 'utf8')
 
 // Tokenize
-let tokens=Tokenizer.tokenize(inputData);
+let tokens=Tokenizer.tokenize(inputData, inputPath);
 if (tokens===null) {
 	console.log("Error: could not tokenize\n");
 	process.exit(0);

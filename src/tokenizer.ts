@@ -1,12 +1,12 @@
 export class Token {
-	public constructor(public text: string, public lineNum: number, public columnNum: number) {
+	public constructor(public text: string, public file: string, public lineNum: number, public columnNum: number) {
 	}
 }
 
 export class Tokenizer {
 	static operators: string[]=['->','==','!=','<=','>=','<','>','=','+','-','*','/','(',')','{','}','[',']','.',',','&','|','^','!',';'];
 
-	static tokenize(input: string):null | Token[] {
+	static tokenize(input: string, file: string):null | Token[] {
 		let tokens: Token[] = [];
 		let lineNum=1;
 		let lineStartOffset=0;
@@ -37,7 +37,7 @@ export class Tokenizer {
 					text+=c2;
 					++i;
 				}
-				tokens.push(new Token(text, lineNum, columnNum));
+				tokens.push(new Token(text, file, lineNum, columnNum));
 
 				continue;
 			}
@@ -46,7 +46,7 @@ export class Tokenizer {
 			let j;
 			for(j=0; j<this.operators.length; ++j) {
 				if (sub.startsWith(this.operators[j])) {
-					tokens.push(new Token(this.operators[j], lineNum, columnNum));
+					tokens.push(new Token(this.operators[j], file, lineNum, columnNum));
 					i+=this.operators[j].length-1;
 					break;
 				}
