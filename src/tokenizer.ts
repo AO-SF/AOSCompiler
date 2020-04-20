@@ -4,7 +4,7 @@ export class Token {
 }
 
 export class Tokenizer {
-	static operators: string[]=['==','!=','<=','>=','<','>','=','+','-','*','/','&','|','^','!',';'];
+	static operators: string[]=['->','==','!=','<=','>=','<','>','=','+','-','*','/','(',')','{','}','[',']','.',',','&','|','^','!',';'];
 
 	static tokenize(input: string):Token[] {
 		let tokens: Token[] = [];
