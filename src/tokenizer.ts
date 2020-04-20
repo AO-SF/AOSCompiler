@@ -6,7 +6,7 @@ export class Token {
 export class Tokenizer {
 	static operators: string[]=['->','==','!=','<=','>=','<','>','=','+','-','*','/','(',')','{','}','[',']','.',',','&','|','^','!',';'];
 
-	static tokenize(input: string):Token[] {
+	static tokenize(input: string):null | Token[] {
 		let tokens: Token[] = [];
 		let lineNum=1;
 		let lineStartOffset=0;
@@ -26,37 +26,37 @@ export class Tokenizer {
 				continue;
 			}
 
- 			// Literal?
- 			if (this.charIsLiteral(c)) {
- 				// Consume as many characters as possible
- 				let text=c;
- 				while(i+1<input.length) {
- 					let c2=input[i+1];
- 					if (!this.charIsLiteral(c2))
- 						break;
- 					text+=c2;
- 					++i;
- 				}
- 				tokens.push(new Token(text, lineNum, columnNum));
+			// Literal?
+			if (this.charIsLiteral(c)) {
+				// Consume as many characters as possible
+				let text=c;
+				while(i+1<input.length) {
+					let c2=input[i+1];
+					if (!this.charIsLiteral(c2))
+						break;
+					text+=c2;
+					++i;
+				}
+				tokens.push(new Token(text, lineNum, columnNum));
 
- 				continue;
- 			}
+				continue;
+			}
 
- 			// Operator?
- 			let j;
- 			for(j=0; j<this.operators.length; ++j) {
- 				if (sub.startsWith(this.operators[j])) {
- 					tokens.push(new Token(this.operators[j], lineNum, columnNum));
- 					i+=this.operators[j].length-1;
- 					break;
- 				}
- 			}
- 			if (j<this.operators.length)
- 				continue;
+			// Operator?
+			let j;
+			for(j=0; j<this.operators.length; ++j) {
+				if (sub.startsWith(this.operators[j])) {
+					tokens.push(new Token(this.operators[j], lineNum, columnNum));
+					i+=this.operators[j].length-1;
+					break;
+				}
+			}
+			if (j<this.operators.length)
+				continue;
 
- 			// Unexpected character
- 			console.log("Could not tokenize: unexpected character '"+c+"' (line "+lineNum+", column "+columnNum+")");
- 			return [];
+			// Unexpected character
+			console.log("Could not tokenize: unexpected character '"+c+"' (line "+lineNum+", column "+columnNum+")");
+			return null;
 		}
 
 		return tokens;
