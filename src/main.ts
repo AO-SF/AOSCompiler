@@ -22,13 +22,16 @@ if (tokens===null) {
 	process.exit(0);
 }
 
+// Temp debugging
+console.log(tokens);
+
 // Parse
-let ast=Parser.parse(tokens);
+let parser=new Parser();
+let ast=parser.parse(tokens);
 if (ast===null) {
 	console.log("Error: could not parse\n");
 	process.exit(0);
 }
 
 // Temp debugging
-console.log(tokens);
 console.log(ast);
