@@ -120,6 +120,16 @@ export class Parser {
 		return root;
 	}
 
+	private nodeStackGetHierarchyString():string {
+		let str='';
+		for(let i=0; i<this.nodeStack.length; ++i) {
+			if (i>0)
+				str+='->';
+			str+=AstNodeType[this.nodeStack[i].type];
+		}
+		return str;
+	}
+
 	private nodeStackPush(type:AstNodeType) {
 		let parent=this.nodeStack[this.nodeStack.length-1];
 		this.nodeStackPushHelper(parent, type);
