@@ -14,7 +14,8 @@ export enum AstNodeType {
 	Expression,
 	ExpressionMultiplication,
 	ExpressionAddition,
-	ExpressionLiteral,
+	ExpressionAssignment,
+	ExpressionTerminal,
 };
 
 export class AstNode {
