@@ -1,6 +1,10 @@
+import { Generator } from './generator'
 import { Optimizer } from './optimizer'
 import { Parser } from './parser'
 import { Tokenizer } from './tokenizer'
+
+let fs=require('fs');
+let path=require('path');
 
 // Process arguments
 if (process.argv.length!=4) {
@@ -12,8 +16,6 @@ const inputPath=process.argv[2];
 const outputPath=process.argv[3];
 
 // Load input file data
-let fs=require('fs');
-let path=require('path');
 const inputData = fs.readFileSync(path.resolve(__dirname, inputPath), 'utf8')
 
 // Tokenize
@@ -43,3 +45,14 @@ optimizer.optimize(ast);
 
 // Temp debugging
 ast.debug();
+
+// Generate code
+let generator=new Generator();
+let outputData=generator.generate(ast);
+if (outputData===null) {
+	console.log("Error: could not generate code\n");
+	process.exit(0);
+}
+
+// Write code to output file
+fs.writeFileSync(path.resolve(__dirname, outputPath), outputData);
