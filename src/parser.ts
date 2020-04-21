@@ -319,12 +319,20 @@ export class Parser {
 
 						continue;
 					}
+
+					// Close parenthesis terminating group?
+					if (token.text==')') {
+						this.nodeStackPop();
+
+						continue;
+					}
 				break;
 				case AstNodeType.ExpressionBrackets:
 					// Close parenthesis terminating a group?
 					if (token.text==')') {
 						this.nodeStackPop();
-						this.nodeStackPop();
+
+						input.unshift(token);
 
 						continue;
 					}
