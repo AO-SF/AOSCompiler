@@ -38,6 +38,24 @@ export class AstNode {
 		// Add type to string
 		str+=AstNodeType[this.type];
 
+		// Type-specific info
+		switch(this.type) {
+			case AstNodeType.Root:
+			case AstNodeType.Definition:
+			case AstNodeType.VariableDefinition:
+			case AstNodeType.FunctionDefinition:
+			case AstNodeType.FunctionDefinitionArguments:
+				// Nothing extra to add
+			break;
+			case AstNodeType.Type:
+			case AstNodeType.Name:
+				// Simply list all token texts
+				str+=':';
+				for(let i=0; i<this.tokens.length; ++i)
+					str+=' '+this.tokens[i].text;
+			break;
+		}
+
 		// Write out string
 		console.log(str);
 
