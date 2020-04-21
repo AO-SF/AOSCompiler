@@ -75,7 +75,12 @@ export class Generator {
 					return null;
 				output+=blockOutput;
 
-				// TODO: Add return statement if none already?
+				// Add return statement
+				// TODO: don't bother if one already?
+				output+='ret\n';
+
+				// Empty line after function
+				output+='\n';
 
 				return output;
 			} break;
