@@ -16,6 +16,18 @@ export class Tokenizer {
 			let sub=input.substr(i);
 			let columnNum=i-lineStartOffset+1;
 
+			// Single line comment?
+			if (sub.startsWith('//')) {
+				// Consume entire comment up to newline or end of file
+				while(i+1<input.length) {
+					let c2=input[i+1];
+					if (c2=='\n')
+						break;
+					++i;
+				}
+				continue;
+			}
+
 			// Whitespace?
 			if (this.charIsWhitespace(c)) {
 				// If newline then increment line count and reset column
