@@ -31,6 +31,16 @@ export class Parser {
 					if (token.text=='(') {
 						currNode.type=AstNodeType.FunctionDefinition;
 
+						// Peek at next token - if closing parenthesis then not actually any arguments
+						if (input.length>0 && input[0].text==')') {
+							input.shift();
+
+							this.nodeStackPush(AstNodeType.Block);
+
+							continue;
+						}
+
+						// Otherwise prepare for list of arguments
 						this.nodeStackPush(AstNodeType.FunctionDefinitionArguments);
 
 						continue;
