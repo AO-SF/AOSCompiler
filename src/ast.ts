@@ -12,10 +12,11 @@ export enum AstNodeType {
 	Statement,
 	StatementReturn,
 	Expression,
-	ExpressionMultiplication,
-	ExpressionAddition,
 	ExpressionAssignment,
+	ExpressionAddition,
+	ExpressionMultiplication,
 	ExpressionTerminal,
+	ExpressionBrackets,
 };
 
 export class AstNode {

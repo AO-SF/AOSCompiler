@@ -210,18 +210,18 @@ export class Parser {
 						continue;
 					}
 				break;
-				case AstNodeType.ExpressionMultiplication:
-					// Multiply or divide sign to indicate another operand?
-					if (token.text=='*' || token.text=='/') {
+				case AstNodeType.ExpressionAssignment:
+					// Equals sign to indicate another operand?
+					if (token.text=='=') {
 						currNode.tokens.push(token);
 
-						this.nodeStackPush(AstNodeType.ExpressionTerminal);
+						this.nodeStackPush(AstNodeType.ExpressionAddition);
 
 						continue;
 					}
 
 					// Terminators
-					if (token.text=='+' || token.text=='-' || token.text=='=' || token.text==';') {
+					if (token.text==')' || token.text==';') {
 						this.nodeStackPop();
 
 						input.unshift(token);
@@ -240,7 +240,7 @@ export class Parser {
 					}
 
 					// Terminators
-					if (token.text=='=' || token.text==';') {
+					if (token.text=='=' || token.text==')' || token.text==';') {
 						this.nodeStackPop();
 
 						input.unshift(token);
@@ -248,18 +248,18 @@ export class Parser {
 						continue;
 					}
 				break;
-				case AstNodeType.ExpressionAssignment:
-					// Equals sign to indicate another operand?
-					if (token.text=='=') {
+				case AstNodeType.ExpressionMultiplication:
+					// Multiply or divide sign to indicate another operand?
+					if (token.text=='*' || token.text=='/') {
 						currNode.tokens.push(token);
 
-						this.nodeStackPush(AstNodeType.ExpressionAddition);
+						this.nodeStackPush(AstNodeType.ExpressionTerminal);
 
 						continue;
 					}
 
 					// Terminators
-					if (token.text==';') {
+					if (token.text=='+' || token.text=='-' || token.text=='=' || token.text==')' || token.text==';') {
 						this.nodeStackPop();
 
 						input.unshift(token);
@@ -272,6 +272,22 @@ export class Parser {
 					if (this.strIsTerminal(token.text)) {
 						currNode.tokens.push(token);
 
+						this.nodeStackPop();
+
+						continue;
+					}
+
+					// Open parenthesis starting group?
+					if (token.text=='(') {
+						this.nodeStackPush(AstNodeType.ExpressionBrackets);
+
+						continue;
+					}
+				break;
+				case AstNodeType.ExpressionBrackets:
+					// Close parenthesis terminating a group?
+					if (token.text==')') {
+						this.nodeStackPop();
 						this.nodeStackPop();
 
 						continue;
@@ -342,16 +358,19 @@ export class Parser {
 			case AstNodeType.Expression:
 				this.nodeStackPushHelper(node, AstNodeType.ExpressionAssignment);
 			break;
-			case AstNodeType.ExpressionMultiplication:
-				this.nodeStackPushHelper(node, AstNodeType.ExpressionTerminal);
+			case AstNodeType.ExpressionAssignment:
+				this.nodeStackPushHelper(node, AstNodeType.ExpressionAddition);
 			break;
 			case AstNodeType.ExpressionAddition:
 				this.nodeStackPushHelper(node, AstNodeType.ExpressionMultiplication);
 			break;
-			case AstNodeType.ExpressionAssignment:
-				this.nodeStackPushHelper(node, AstNodeType.ExpressionAddition);
+			case AstNodeType.ExpressionMultiplication:
+				this.nodeStackPushHelper(node, AstNodeType.ExpressionTerminal);
 			break;
 			case AstNodeType.ExpressionTerminal:
+			break;
+			case AstNodeType.ExpressionBrackets:
+				this.nodeStackPushHelper(node, AstNodeType.ExpressionAssignment);
 			break;
 		}
 	}
@@ -414,6 +433,7 @@ export class Parser {
 			if (c.charCodeAt(0)<'0'.charCodeAt(0) || c.charCodeAt(0)>'9'.charCodeAt(0))
 				return false;
 		}
+
 		return true;
 	}
 }
