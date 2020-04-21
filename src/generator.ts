@@ -55,18 +55,22 @@ export class Generator {
 			case AstNodeType.FunctionDefinition: {
 				let output='';
 
+				let nameTypeNode=node.children[0];
+				let argumentsNode=(node.children.length==3 ? node.children[1] : null);
+				let bodyNode=(argumentsNode!==null ? node.children[2] : node.children[1]);
+
 				// First child is VariableDefinition defining function's name and return type
-				let nameNode=node.children[0].children[0];
-				let typeNode=node.children[0].children[1];
+				let nameNode=nameTypeNode.children[0];
+				let typeNode=nameTypeNode.children[1];
 
 				output+='; User defined function \''+nameNode.tokens[0].text+'\'\n';
 				output+='label '+nameNode.tokens[0].text+'\n';
 
 				// Optional next child is FunctionDefinitionArguments
-				// TODO: handle this (which includes changing body part below to use index [2] sometimes)
+				// TODO: handle this
 
 				// Final child is Block representing function body
-				let blockOutput=this.generateNode(node.children[1]);
+				let blockOutput=this.generateNode(bodyNode);
 				if (blockOutput===null)
 					return null;
 				output+=blockOutput;
