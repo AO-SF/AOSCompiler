@@ -16,6 +16,22 @@ export class Tokenizer {
 			let sub=input.substr(i);
 			let columnNum=i-lineStartOffset+1;
 
+			// Start of quoted string?
+			if (sub.startsWith('"')) {
+				// Consume entire string up to end quote or end of file
+				let text=c;
+				while(i+1<input.length) {
+					let c2=input[i+1];
+					text+=c2;
+					++i;
+					if (c2=='"')
+						break;
+				}
+				tokens.push(new Token(text, file, lineNum, columnNum));
+
+				continue;
+			}
+
 			// Single line comment?
 			if (sub.startsWith('//')) {
 				// Consume entire comment up to newline or end of file
