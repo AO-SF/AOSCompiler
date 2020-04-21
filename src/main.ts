@@ -34,4 +34,4 @@ if (ast===null) {
 }
 
 // Temp debugging
-console.log(ast);
+ast.debug();
