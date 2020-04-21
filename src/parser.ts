@@ -18,7 +18,7 @@ export class Parser {
 			switch(currNode.type) {
 				case AstNodeType.Root:
 					// Type to start a definition (variable or function)?
-					if (this.literalIsType(token.text)) {
+					if (this.literalIsBaseType(token.text)) {
 						this.nodeStackPush(AstNodeType.Definition);
 
 						input.unshift(token);
@@ -38,7 +38,7 @@ export class Parser {
 				break;
 				case AstNodeType.Type:
 					// Base type?
-					if (currNode.tokens.length==0 && this.literalIsType(token.text)) {
+					if (currNode.tokens.length==0 && this.literalIsBaseType(token.text)) {
 						currNode.tokens.push(token);
 
 						continue;
@@ -156,7 +156,7 @@ export class Parser {
 		this.nodeStack.pop();
 	}
 
-	private literalIsType(literal: string):boolean {
+	private literalIsBaseType(literal: string):boolean {
 		if (literal=='uint8_t' || literal=='uint16_t')
 			return true;
 		return false;
@@ -173,7 +173,7 @@ export class Parser {
 			return false;
 		if (this.literalIsKeyword(literal))
 			return false;
-		if (this.literalIsType(literal))
+		if (this.literalIsBaseType(literal))
 			return false;
 		for(let i=0; i<literal.length; ++i) {
 			let c=literal[i];
