@@ -175,6 +175,13 @@ export class Parser {
 						continue;
 					}
 
+					// While statement?
+					if (token.text=='while') {
+						this.nodeStackPush(AstNodeType.StatementWhile);
+
+						continue;
+					}
+
 					// Semicolon to terminate statement?
 					if (token.text==';') {
 						this.nodeStackPop();
@@ -213,6 +220,28 @@ export class Parser {
 						this.nodeStackPop();
 
 						input.unshift(token);
+
+						continue;
+					}
+				break;
+				case AstNodeType.StatementWhile:
+					// Open parenthesis starting condition?
+					if (token.text=='(') {
+						this.nodeStackPushHelper(currNode, AstNodeType.ExpressionBrackets);
+
+						continue;
+					}
+
+					// Closing parenthesis to terminate condition?
+					if (token.text==')') {
+						this.nodeStackPushHelper(currNode, AstNodeType.Block);
+
+						continue;
+					}
+
+					// Closing curly to terminate body?
+					if (token.text=='}') {
+						this.nodeStackPop();
 
 						continue;
 					}
