@@ -134,6 +134,39 @@ export class Generator {
 			case AstNodeType.ExpressionInequality: {
 			} break;
 			case AstNodeType.ExpressionAddition: {
+				let output='';
+
+				// Generate first-operand code and save value onto stack
+				let firstOutput=this.generateNode(node.children[0]);
+				if (firstOutput===null)
+					return null;
+
+				output+=firstOutput;
+				output+='push16 r0\n';
+
+				// Loop over rest of the operands
+				for(let i=0; i<node.tokens.length; ++i) {
+					// Generate this operands code and place value in r1
+					let loopOutput=this.generateNode(node.children[i+1]);
+					if (loopOutput===null)
+						return null;
+
+					output+=loopOutput;
+					output+='mov r1 r0\n';
+
+					// Execute operation
+					output+='pop16 r0\n'; // restore previous operand
+					if (node.tokens[i].text=='+')
+						output+='add r0 r1\n';
+					else if (node.tokens[i].text=='-')
+						output+='sub r0 r1\n';
+					output+='push16 r0\n'; // save result ready to act as next operand
+				}
+
+				// Pop result off stack
+				output+='pop16 r0\n';
+
+				return output;
 			} break;
 			case AstNodeType.ExpressionMultiplication: {
 			} break;
