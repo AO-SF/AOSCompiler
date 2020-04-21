@@ -111,11 +111,14 @@ export class Parser {
 			}
 
 			// Bad sequence of tokens
-			console.log("Could not parse: unexpected token '"+token.text+"' (file '"+token.file+"', line "+token.lineNum+", column "+token.columnNum+", state "+AstNodeType[currNode.type]+")");
+			console.log("Could not parse: unexpected token '"+token.text+"' (file '"+token.file+"', line "+token.lineNum+", column "+token.columnNum+", state "+this.nodeStackGetHierarchyString()+")");
 			return null;
 		}
 
-		// TODO: probably want to make sure stack is empty or just root node or w/e once finished input loop
+		if (this.nodeStack.length!=1) {
+			console.log('Could not parse: unsatisfied nodes '+this.nodeStackGetHierarchyString());
+			return null;
+		}
 
 		return root;
 	}
