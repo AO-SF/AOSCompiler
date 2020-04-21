@@ -35,6 +35,13 @@ export class Parser {
 
 						continue;
 					}
+
+					// Semicolon to end definition?
+					if (token.text==';') {
+						this.nodeStackPop();
+
+						continue;
+					}
 				break;
 				case AstNodeType.Type:
 					// Base type?
@@ -71,23 +78,19 @@ export class Parser {
 					}
 				break;
 				case AstNodeType.VariableDefinition:
-					this.nodeStackPop();
+					// Require a comma, semicolon or open/close parenthesis to terminate
+					if (token.text==',' || token.text==';' || token.text=='(' || token.text==')') {
+						this.nodeStackPop();
 
-					input.unshift(token);
-
-					continue;
-				break;
-				case AstNodeType.FunctionDefinition:
-					// Open curly to start function body?
-					if (token.text=='{') {
-						// TODO: this
+						input.unshift(token);
 
 						continue;
 					}
-
-					// Close curly to end function body?
+				break;
+				case AstNodeType.FunctionDefinition:
+					// Close curly to end function body (passed up from Block)?
 					if (token.text=='}') {
-						// Function is fulled defined
+						// Function is fully defined
 						this.nodeStackPop();
 
 						continue;
@@ -104,6 +107,110 @@ export class Parser {
 					// Closing parenthesis to end argument list?
 					if (token.text==')') {
 						this.nodeStackPop();
+
+						this.nodeStackPush(AstNodeType.Block);
+
+						continue;
+					}
+				break;
+				case AstNodeType.Block:
+					// Open curly to start block?
+					if (currNode.tokens.length==0 && token.text=='{') {
+						this.nodeStackPush(AstNodeType.Statement);
+
+						continue;
+					}
+
+					// Closing curly to end block?
+					if (currNode.tokens.length==0 && token.text=='}') {
+						this.nodeStackPop();
+
+						input.unshift(token);
+
+						continue;
+					}
+
+					// Semicolon passed up from statement?
+					if (token.text==';') {
+						this.nodeStackPush(AstNodeType.Statement);
+
+						continue;
+					}
+				break;
+				case AstNodeType.Statement:
+					// Type suggesting variable definition?
+					if (this.strIsBaseType(token.text)) {
+						this.nodeStackPush(AstNodeType.VariableDefinition);
+
+						input.unshift(token);
+
+						continue;
+					}
+
+					// Return statement?
+					if (token.text=='return') {
+						this.nodeStackPush(AstNodeType.StatementReturn);
+
+						input.unshift(token);
+
+						continue;
+					}
+
+					// Semicolon to terminate statement?
+					if (token.text==';') {
+						this.nodeStackPop();
+
+						input.unshift(token);
+
+						continue;
+					}
+
+					// Closing curly for parent node?
+					if (currNode.tokens.length==0 && token.text=='}') {
+						this.nodeStackPop();
+
+						input.unshift(token);
+
+						continue;
+					}
+				break;
+				case AstNodeType.StatementReturn:
+					// 'return' keyword to start statement?
+					if (currNode.tokens.length==0 && token.text=='return') {
+						this.nodeStackPush(AstNodeType.Expression);
+
+						continue;
+					}
+
+					// Semicolon to terminate statement?
+					if (token.text==';') {
+						this.nodeStackPop();
+
+						input.unshift(token);
+
+						continue;
+					}
+				break;
+				case AstNodeType.Expression:
+					// Symbol?
+					if (this.strIsSymbol(token.text)) {
+						currNode.tokens.push(token);
+
+						continue;
+					}
+
+					// Literal?
+					if (this.strIsLiteral(token.text)) {
+						currNode.tokens.push(token);
+
+						continue;
+					}
+
+					// Semicolon to terminate statement?
+					if (token.text==';') {
+						this.nodeStackPop();
+
+						input.unshift(token);
 
 						continue;
 					}
@@ -162,6 +269,14 @@ export class Parser {
 			case AstNodeType.FunctionDefinitionArguments:
 				this.nodeStackPushHelper(node, AstNodeType.VariableDefinition);
 			break;
+			case AstNodeType.Block:
+			break;
+			case AstNodeType.Statement:
+			break;
+			case AstNodeType.StatementReturn:
+			break;
+			case AstNodeType.Expression:
+			break;
 		}
 	}
 
@@ -199,6 +314,17 @@ export class Parser {
 			if (c=='_')
 				continue;
 			return false;
+		}
+		return true;
+	}
+
+	private strIsLiteral(str: string) {
+		if (str.length==0)
+			return false;
+		for(let i=0; i<str.length; ++i) {
+			let c=str[i];
+			if (c.charCodeAt(0)<'0'.charCodeAt(0) || c.charCodeAt(0)>'9'.charCodeAt(0))
+				return false;
 		}
 		return true;
 	}

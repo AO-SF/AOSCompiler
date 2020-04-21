@@ -8,6 +8,10 @@ export enum AstNodeType {
 	VariableDefinition,
 	FunctionDefinition,
 	FunctionDefinitionArguments,
+	Block,
+	Statement,
+	StatementReturn,
+	Expression,
 };
 
 export class AstNode {
@@ -45,10 +49,14 @@ export class AstNode {
 			case AstNodeType.VariableDefinition:
 			case AstNodeType.FunctionDefinition:
 			case AstNodeType.FunctionDefinitionArguments:
+			case AstNodeType.Block:
+			case AstNodeType.Statement:
+			case AstNodeType.StatementReturn:
 				// Nothing extra to add
 			break;
 			case AstNodeType.Type:
 			case AstNodeType.Name:
+			case AstNodeType.Expression:
 				// Simply list all token texts
 				str+=':';
 				for(let i=0; i<this.tokens.length; ++i)
