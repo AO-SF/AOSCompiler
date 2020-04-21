@@ -25,9 +25,6 @@ if (tokens===null) {
 	process.exit(0);
 }
 
-// Temp debugging
-console.log(tokens);
-
 // Parse
 let parser=new Parser();
 let ast=parser.parse(tokens);
@@ -36,15 +33,9 @@ if (ast===null) {
 	process.exit(0);
 }
 
-// Temp debugging
-ast.debug();
-
 // Optimize
 let optimizer=new Optimizer();
 optimizer.optimize(ast);
-
-// Temp debugging
-ast.debug();
 
 // Generate code
 let generator=new Generator();
