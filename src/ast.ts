@@ -12,6 +12,9 @@ export enum AstNodeType {
 	Statement,
 	StatementReturn,
 	Expression,
+	ExpressionMultiplication,
+	ExpressionAddition,
+	ExpressionLiteral,
 };
 
 export class AstNode {
@@ -57,6 +60,9 @@ export class AstNode {
 			case AstNodeType.Type:
 			case AstNodeType.Name:
 			case AstNodeType.Expression:
+			case AstNodeType.ExpressionMultiplication:
+			case AstNodeType.ExpressionAddition:
+			case AstNodeType.ExpressionLiteral:
 				// Simply list all token texts
 				str+=':';
 				for(let i=0; i<this.tokens.length; ++i)

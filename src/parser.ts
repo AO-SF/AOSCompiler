@@ -192,25 +192,59 @@ export class Parser {
 					}
 				break;
 				case AstNodeType.Expression:
-					// Symbol?
-					if (this.strIsSymbol(token.text)) {
-						currNode.tokens.push(token);
-
-						continue;
-					}
-
-					// Literal?
-					if (this.strIsLiteral(token.text)) {
-						currNode.tokens.push(token);
-
-						continue;
-					}
-
 					// Semicolon to terminate statement?
 					if (token.text==';') {
 						this.nodeStackPop();
 
 						input.unshift(token);
+
+						continue;
+					}
+				break;
+				case AstNodeType.ExpressionMultiplication:
+					// Multiply sign to indicate another operand?
+					if (token.text=='*') {
+						currNode.tokens.push(token);
+
+						this.nodeStackPush(AstNodeType.ExpressionAddition);
+
+						continue;
+					}
+
+					// Terminators
+					if (token.text==';') {
+						this.nodeStackPop();
+
+						input.unshift(token);
+
+						continue;
+					}
+				break;
+				case AstNodeType.ExpressionAddition:
+					// Plus sign to indicate another operand?
+					if (token.text=='+') {
+						currNode.tokens.push(token);
+
+						this.nodeStackPush(AstNodeType.ExpressionLiteral);
+
+						continue;
+					}
+
+					// Terminators
+					if (token.text=='*' || token.text==';') {
+						this.nodeStackPop();
+
+						input.unshift(token);
+
+						continue;
+					}
+				break;
+				case AstNodeType.ExpressionLiteral:
+					// Literal (number or string)?
+					if (this.strIsLiteral(token.text)) {
+						currNode.tokens.push(token);
+
+						this.nodeStackPop();
 
 						continue;
 					}
@@ -276,6 +310,15 @@ export class Parser {
 			case AstNodeType.StatementReturn:
 			break;
 			case AstNodeType.Expression:
+				this.nodeStackPushHelper(node, AstNodeType.ExpressionMultiplication);
+			break;
+			case AstNodeType.ExpressionMultiplication:
+				this.nodeStackPushHelper(node, AstNodeType.ExpressionAddition);
+			break;
+			case AstNodeType.ExpressionAddition:
+				this.nodeStackPushHelper(node, AstNodeType.ExpressionLiteral);
+			break;
+			case AstNodeType.ExpressionLiteral:
 			break;
 		}
 	}
