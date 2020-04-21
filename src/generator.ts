@@ -27,7 +27,7 @@ export class Generator {
 				// Initial boilerplate to implement main function
 				// TODO: prepare argc and argv
 				output+='; Call main and handle exit code once returns\n';
-				output+='call main\n';
+				output+='call '+this.mangleNameFunction('main')+'\n';
 				output+='mov r1 r0\n';
 				output+='mov r0 SyscallIdExit\n';
 				output+='syscall\n';
@@ -64,7 +64,7 @@ export class Generator {
 				let typeNode=nameTypeNode.children[1];
 
 				output+='; User defined function \''+nameNode.tokens[0].text+'\'\n';
-				output+='label '+nameNode.tokens[0].text+'\n';
+				output+='label '+this.mangleNameFunction(nameNode.tokens[0].text)+'\n';
 
 				// Optional next child is FunctionDefinitionArguments
 				// TODO: handle this
@@ -186,5 +186,9 @@ export class Generator {
 
 		console.log('Could not generate code: unexpected/unhandled node of type '+AstNodeType[node.type]); // TODO: improve this
 		return null;
+	}
+
+	private mangleNameFunction(input: string):string {
+		return 'function_'+input;
 	}
 }
