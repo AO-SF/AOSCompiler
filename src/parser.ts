@@ -122,7 +122,10 @@ export class Parser {
 
 	private nodeStackPush(type:AstNodeType) {
 		let parent=this.nodeStack[this.nodeStack.length-1];
+		this.nodeStackPushHelper(parent, type);
+	}
 
+	private nodeStackPushHelper(parent:AstNode, type:AstNodeType) {
 		let node=parent.createChild(type);
 		this.nodeStack.push(node);
 
@@ -130,21 +133,21 @@ export class Parser {
 			case AstNodeType.Root:
 			break;
 			case AstNodeType.Definition:
-				this.nodeStackPush(AstNodeType.VariableDefinition);
+				this.nodeStackPushHelper(node, AstNodeType.VariableDefinition);
 			break;
 			case AstNodeType.Type:
 			break;
 			case AstNodeType.Name:
 			break;
 			case AstNodeType.VariableDefinition:
-				this.nodeStackPush(AstNodeType.Name);
-				this.nodeStackPush(AstNodeType.Type);
+				this.nodeStackPushHelper(node, AstNodeType.Name);
+				this.nodeStackPushHelper(node, AstNodeType.Type);
 			break;
 			case AstNodeType.FunctionDefinition:
 				// Never created in this way
 			break;
 			case AstNodeType.FunctionDefinitionArguments:
-				this.nodeStackPush(AstNodeType.VariableDefinition);
+				this.nodeStackPushHelper(node, AstNodeType.VariableDefinition);
 			break;
 		}
 	}
