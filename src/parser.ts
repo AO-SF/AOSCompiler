@@ -18,7 +18,7 @@ export class Parser {
 			switch(currNode.type) {
 				case AstNodeType.Root:
 					// Type to start a definition (variable or function)?
-					if (this.literalIsBaseType(token.text)) {
+					if (this.strIsBaseType(token.text)) {
 						this.nodeStackPush(AstNodeType.Definition);
 
 						input.unshift(token);
@@ -38,7 +38,7 @@ export class Parser {
 				break;
 				case AstNodeType.Type:
 					// Base type?
-					if (currNode.tokens.length==0 && this.literalIsBaseType(token.text)) {
+					if (currNode.tokens.length==0 && this.strIsBaseType(token.text)) {
 						currNode.tokens.push(token);
 
 						continue;
@@ -52,7 +52,7 @@ export class Parser {
 					}
 
 					// Symbol to terminate type?
-					if (currNode.tokens.length>0 && this.literalIsSymbol(token.text)) {
+					if (currNode.tokens.length>0 && this.strIsSymbol(token.text)) {
 						this.nodeStackPop();
 
 						input.unshift(token);
@@ -62,7 +62,7 @@ export class Parser {
 				break;
 				case AstNodeType.Name:
 					// Symbol is all we can accept
-					if (this.literalIsSymbol(token.text)) {
+					if (this.strIsSymbol(token.text)) {
 						currNode.tokens.push(token);
 
 						this.nodeStackPop();
@@ -166,27 +166,27 @@ export class Parser {
 		this.nodeStack.pop();
 	}
 
-	private literalIsBaseType(literal: string):boolean {
-		if (literal=='uint8_t' || literal=='uint16_t')
+	private strIsBaseType(str: string):boolean {
+		if (str=='uint8_t' || str=='uint16_t')
 			return true;
 		return false;
 	}
 
-	private literalIsKeyword(literal: string):boolean {
-		if (literal=='return' || literal=='if' || literal=='while')
+	private strIsKeyword(str: string):boolean {
+		if (str=='return' || str=='if' || str=='while')
 			return true;
 		return false;
 	}
 
-	private literalIsSymbol(literal: string):boolean {
-		if (literal.length==0)
+	private strIsSymbol(str: string):boolean {
+		if (str.length==0)
 			return false;
-		if (this.literalIsKeyword(literal))
+		if (this.strIsKeyword(str))
 			return false;
-		if (this.literalIsBaseType(literal))
+		if (this.strIsBaseType(str))
 			return false;
-		for(let i=0; i<literal.length; ++i) {
-			let c=literal[i];
+		for(let i=0; i<str.length; ++i) {
+			let c=str[i];
 			if (c.charCodeAt(0)>='0'.charCodeAt(0) && c.charCodeAt(0)<='9'.charCodeAt(0) && i!=0)
 				continue;
 			if (c.charCodeAt(0)>='a'.charCodeAt(0) && c.charCodeAt(0)<='z'.charCodeAt(0))
