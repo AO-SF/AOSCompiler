@@ -147,6 +147,15 @@ export class Parser {
 						continue;
 					}
 
+					// Terminal literal suggesting part of an expression?
+					if (this.strIsTerminal(token.text)) {
+						this.nodeStackPush(AstNodeType.Expression);
+
+						input.unshift(token);
+
+						continue;
+					}
+
 					// Return statement?
 					if (token.text=='return') {
 						this.nodeStackPush(AstNodeType.StatementReturn);
@@ -202,8 +211,46 @@ export class Parser {
 					}
 				break;
 				case AstNodeType.ExpressionMultiplication:
-					// Multiply sign to indicate another operand?
-					if (token.text=='*') {
+					// Multiply or divide sign to indicate another operand?
+					if (token.text=='*' || token.text=='/') {
+						currNode.tokens.push(token);
+
+						this.nodeStackPush(AstNodeType.ExpressionTerminal);
+
+						continue;
+					}
+
+					// Terminators
+					if (token.text=='+' || token.text=='-' || token.text=='=' || token.text==';') {
+						this.nodeStackPop();
+
+						input.unshift(token);
+
+						continue;
+					}
+				break;
+				case AstNodeType.ExpressionAddition:
+					// Plus or minus sign to indicate another operand?
+					if (token.text=='+' || token.text=='-') {
+						currNode.tokens.push(token);
+
+						this.nodeStackPush(AstNodeType.ExpressionMultiplication);
+
+						continue;
+					}
+
+					// Terminators
+					if (token.text=='=' || token.text==';') {
+						this.nodeStackPop();
+
+						input.unshift(token);
+
+						continue;
+					}
+				break;
+				case AstNodeType.ExpressionAssignment:
+					// Equals sign to indicate another operand?
+					if (token.text=='=') {
 						currNode.tokens.push(token);
 
 						this.nodeStackPush(AstNodeType.ExpressionAddition);
@@ -220,28 +267,9 @@ export class Parser {
 						continue;
 					}
 				break;
-				case AstNodeType.ExpressionAddition:
-					// Plus sign to indicate another operand?
-					if (token.text=='+') {
-						currNode.tokens.push(token);
-
-						this.nodeStackPush(AstNodeType.ExpressionLiteral);
-
-						continue;
-					}
-
-					// Terminators
-					if (token.text=='*' || token.text==';') {
-						this.nodeStackPop();
-
-						input.unshift(token);
-
-						continue;
-					}
-				break;
-				case AstNodeType.ExpressionLiteral:
-					// Literal (number or string)?
-					if (this.strIsLiteral(token.text)) {
+				case AstNodeType.ExpressionTerminal:
+					// Number or symbol?
+					if (this.strIsTerminal(token.text)) {
 						currNode.tokens.push(token);
 
 						this.nodeStackPop();
@@ -309,16 +337,21 @@ export class Parser {
 			break;
 			case AstNodeType.StatementReturn:
 			break;
+			case AstNodeType.StatementWhile:
+			break;
 			case AstNodeType.Expression:
-				this.nodeStackPushHelper(node, AstNodeType.ExpressionMultiplication);
+				this.nodeStackPushHelper(node, AstNodeType.ExpressionAssignment);
 			break;
 			case AstNodeType.ExpressionMultiplication:
-				this.nodeStackPushHelper(node, AstNodeType.ExpressionAddition);
+				this.nodeStackPushHelper(node, AstNodeType.ExpressionTerminal);
 			break;
 			case AstNodeType.ExpressionAddition:
-				this.nodeStackPushHelper(node, AstNodeType.ExpressionLiteral);
+				this.nodeStackPushHelper(node, AstNodeType.ExpressionMultiplication);
 			break;
-			case AstNodeType.ExpressionLiteral:
+			case AstNodeType.ExpressionAssignment:
+				this.nodeStackPushHelper(node, AstNodeType.ExpressionAddition);
+			break;
+			case AstNodeType.ExpressionTerminal:
 			break;
 		}
 	}
@@ -361,9 +394,21 @@ export class Parser {
 		return true;
 	}
 
-	private strIsLiteral(str: string) {
+	private strIsTerminal(str: string) {
+		if (this.strIsNumber(str))
+			return true;
+
+		if (this.strIsSymbol(str))
+			return true;
+
+		return false;
+	}
+
+	private strIsNumber(str: string) {
 		if (str.length==0)
 			return false;
+
+		let i;
 		for(let i=0; i<str.length; ++i) {
 			let c=str[i];
 			if (c.charCodeAt(0)<'0'.charCodeAt(0) || c.charCodeAt(0)>'9'.charCodeAt(0))
