@@ -32,6 +32,20 @@ export class Tokenizer {
 				continue;
 			}
 
+			// Start of multi-line comment?
+			if (sub.startsWith('/*')) {
+				// Consume entire comment up to closing marker or end of file
+				while(i+1<input.length) {
+					let sub2=input.substr(i+1);
+					if (sub2.startsWith('*/')) {
+						i+=2;
+						break;
+					}
+					++i;
+				}
+				continue;
+			}
+
 			// Single line comment?
 			if (sub.startsWith('//')) {
 				// Consume entire comment up to newline or end of file
