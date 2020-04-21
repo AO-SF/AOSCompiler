@@ -67,7 +67,7 @@ export class Tokenizer {
 				continue;
 
 			// Unexpected character
-			console.log("Could not tokenize: unexpected character '"+c+"' (line "+lineNum+", column "+columnNum+")");
+			console.log("Could not tokenize: unexpected character '"+c+"' (file '"+file+"', line "+lineNum+", column "+columnNum+")");
 			return null;
 		}
 
