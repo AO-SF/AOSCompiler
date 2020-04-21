@@ -1,3 +1,4 @@
+import { Optimizer } from './optimizer'
 import { Parser } from './parser'
 import { Tokenizer } from './tokenizer'
 
@@ -32,6 +33,13 @@ if (ast===null) {
 	console.log("Error: could not parse\n");
 	process.exit(0);
 }
+
+// Temp debugging
+ast.debug();
+
+// Optimize
+let optimizer=new Optimizer();
+optimizer.optimize(ast);
 
 // Temp debugging
 ast.debug();
