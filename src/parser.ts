@@ -196,6 +196,13 @@ export class Parser {
 				case AstNodeType.StatementReturn:
 					// 'return' keyword to start statement?
 					if (currNode.tokens.length==0 && token.text=='return') {
+						// Peek at next token - if semicolon then void return
+						if (input.length>0 && input[0].text==';') {
+							this.nodeStackPop();
+
+							continue;
+						}
+
 						this.nodeStackPush(AstNodeType.Expression);
 
 						continue;
