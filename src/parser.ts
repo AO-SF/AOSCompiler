@@ -456,7 +456,7 @@ export class Parser {
 	}
 
 	private strIsBaseType(str: string):boolean {
-		if (str=='uint8_t' || str=='uint16_t')
+		if (str=='uint8_t' || str=='uint16_t' || str=='void')
 			return true;
 		return false;
 	}
