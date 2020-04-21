@@ -215,13 +215,32 @@ export class Parser {
 					if (token.text=='=') {
 						currNode.tokens.push(token);
 
-						this.nodeStackPush(AstNodeType.ExpressionAddition);
+						this.nodeStackPush(AstNodeType.ExpressionInequality);
 
 						continue;
 					}
 
 					// Terminators
 					if (token.text==')' || token.text==';') {
+						this.nodeStackPop();
+
+						input.unshift(token);
+
+						continue;
+					}
+				break;
+				case AstNodeType.ExpressionInequality:
+					// Inequality comparison operator to indicate another operand?
+					if (token.text=='<' || token.text=='<=' || token.text=='>' || token.text=='>=') {
+						currNode.tokens.push(token);
+
+						this.nodeStackPush(AstNodeType.ExpressionAddition);
+
+						continue;
+					}
+
+					// Terminators
+					if (token.text=='=' || token.text==')' || token.text==';') {
 						this.nodeStackPop();
 
 						input.unshift(token);
@@ -240,7 +259,7 @@ export class Parser {
 					}
 
 					// Terminators
-					if (token.text=='=' || token.text==')' || token.text==';') {
+					if (token.text=='<' || token.text=='<=' || token.text=='>' || token.text=='>=' || token.text=='=' || token.text==')' || token.text==';') {
 						this.nodeStackPop();
 
 						input.unshift(token);
@@ -259,7 +278,7 @@ export class Parser {
 					}
 
 					// Terminators
-					if (token.text=='+' || token.text=='-' || token.text=='=' || token.text==')' || token.text==';') {
+					if (token.text=='+' || token.text=='-' || token.text=='<' || token.text=='<=' || token.text=='>' || token.text=='>=' || token.text=='=' || token.text==')' || token.text==';') {
 						this.nodeStackPop();
 
 						input.unshift(token);
@@ -359,6 +378,9 @@ export class Parser {
 				this.nodeStackPushHelper(node, AstNodeType.ExpressionAssignment);
 			break;
 			case AstNodeType.ExpressionAssignment:
+				this.nodeStackPushHelper(node, AstNodeType.ExpressionInequality);
+			break;
+			case AstNodeType.ExpressionInequality:
 				this.nodeStackPushHelper(node, AstNodeType.ExpressionAddition);
 			break;
 			case AstNodeType.ExpressionAddition:

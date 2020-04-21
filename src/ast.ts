@@ -13,6 +13,7 @@ export enum AstNodeType {
 	StatementReturn,
 	Expression,
 	ExpressionAssignment,
+	ExpressionInequality,
 	ExpressionAddition,
 	ExpressionMultiplication,
 	ExpressionTerminal,
