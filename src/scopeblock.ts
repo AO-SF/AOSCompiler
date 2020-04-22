@@ -24,8 +24,10 @@ export class Scope {
 		return null;
 	}
 
-	public addVariable(variable: ScopeVariable) {
+	public addVariable(name:string, type:string, totalSize:number):ScopeVariable {
+		let variable=new ScopeVariable(this, name, type, totalSize);
 		this.variables.push(variable);
+		return variable;
 	}
 }
 
