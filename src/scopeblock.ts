@@ -1,7 +1,14 @@
+export class ScopeVariable {
+	public constructor(public scope: Scope, public name:string, public type:string, public totalSize:number) {
+	}
+}
+
 export class Scope {
 	public static separator='__';
 
 	private nextSubLabelId=0;
+
+	public variables: ScopeVariable[] = [];
 
 	public constructor(public name:string) {
 	}
@@ -15,6 +22,10 @@ export class Scope {
 			if (this.variables[i].name==name)
 				return this.variables[i];
 		return null;
+	}
+
+	public addVariable(variable: ScopeVariable) {
+		this.variables.push(variable);
 	}
 }
 
