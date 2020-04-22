@@ -230,6 +230,10 @@ export class Generator {
 	}
 
 	private mangleNameFunction(input: string):string {
-		return 'function_'+input;
+		return 'function'+ScopeBlock.separator+this.escapeName(input);
+	}
+
+	private escapeName(input: string):string {
+		return input.replace('_', '_U'); // prevent any double underscores being passed on, as we use these for our own separators
 	}
 }
