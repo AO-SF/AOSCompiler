@@ -1,8 +1,9 @@
 import { AstNode, AstNodeType } from './ast';
-import { ScopeBlock } from './scopeblock';
+import { Scope, ScopeVariable, ScopeStack } from './scopeblock';
 
 export class Generator {
-	private scopes: ScopeBlock[] = [];
+	private scopeStack: ScopeStack = new ScopeStack();
+
 	public constructor() {
 	}
 
@@ -12,7 +13,7 @@ export class Generator {
 			return null;
 
 		// Reset state
-		this.scopes=[];
+		this.scopeStack=new ScopeStack();
 
 		// Generate from given AST
 		return this.generateNode(rootNode);
@@ -40,14 +41,14 @@ export class Generator {
 				output+='\n';
 
 				// Generate code for children
-				this.scopes.push(new ScopeBlock('global'));
+				this.scopeStack.push(new Scope('global'));
 				for(let i=0; i<node.children.length; ++i) {
 					let childOutput=this.generateNode(node.children[i]);
 					if (childOutput===null)
 						return null;
 					output+=childOutput;
 				}
-				this.scopes.pop();
+				this.scopeStack.pop();
 
 				return output;
 			} break;
@@ -77,12 +78,12 @@ export class Generator {
 				// TODO: handle this
 
 				// Final child is Block representing function body
-				this.scopes.push(new ScopeBlock(this.mangleNameFunction(nameNode.tokens[0].text)));
+				this.scopeStack.push(new Scope(this.mangleNameFunction(nameNode.tokens[0].text)));
 				let blockOutput=this.generateNode(bodyNode);
 				if (blockOutput===null)
 					return null;
 				output+=blockOutput;
-				this.scopes.pop();
+				this.scopeStack.pop();
 
 				// Add return statement
 				// TODO: don't bother if one already?
@@ -144,7 +145,7 @@ export class Generator {
 				let bodyNode=node.children[1];
 
 				// Generate label names to use later
-				let loopName=this.scopes[this.scopes.length-1].genNewSymbolPrefix()+'_loop';
+				let loopName=this.scopeStack.peek()!.genNewSymbolPrefix()+'_loop';
 				let startLabel=loopName+'_start';
 				let endLabel=loopName+'_end';
 
@@ -161,12 +162,12 @@ export class Generator {
 				output+='jmp '+endLabel+'\n';
 
 				// Body
-				this.scopes.push(new ScopeBlock(loopName+'_body'));
+				this.scopeStack.push(new Scope(loopName+'_body'));
 				let bodyOutput=this.generateNode(bodyNode);
 				if (bodyOutput===null)
 					return null;
 				output+=bodyOutput;
-				this.scopes.pop();
+				this.scopeStack.pop();
 
 				// Jump back to start and end label
 				output+='jmp '+startLabel+'\n';
@@ -265,7 +266,7 @@ export class Generator {
 	}
 
 	private mangleNameFunction(input: string):string {
-		return 'function'+ScopeBlock.separator+this.escapeName(input);
+		return 'function'+Scope.separator+this.escapeName(input);
 	}
 
 	private escapeName(input: string):string {
