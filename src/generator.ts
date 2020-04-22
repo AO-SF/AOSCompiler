@@ -272,4 +272,18 @@ export class Generator {
 	private escapeName(input: string):string {
 		return input.replace('_', '_U'); // prevent any double underscores being passed on, as we use these for our own separators
 	}
+
+	private typeToSize(type: string):number {
+		if (type.length==0)
+			return 0;
+
+		if (type[type.length-1]=='*')
+			return 2; // pointers are always 16 bit
+		else if (type=='uint8_t')
+			return 1;
+		else if (type=='uint16_t')
+			return 2;
+		else
+			return 0;
+	}
 }
