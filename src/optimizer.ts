@@ -14,7 +14,6 @@ export class Optimizer {
 			let child=node.children[i];
 			switch(child.type) {
 				case AstNodeType.Root:
-				case AstNodeType.Definition:
 				case AstNodeType.Type:
 				case AstNodeType.Name:
 				case AstNodeType.VariableDefinition:
@@ -34,6 +33,7 @@ export class Optimizer {
 						--i;
 					}
 				break;
+				case AstNodeType.Definition:
 				case AstNodeType.ExpressionBrackets:
 				case AstNodeType.ExpressionAssignment:
 				case AstNodeType.ExpressionInequality:
