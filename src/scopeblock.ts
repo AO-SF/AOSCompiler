@@ -1,5 +1,7 @@
+import { Generator } from './generator';
+
 export class ScopeVariable {
-	public constructor(public scope: Scope, public name:string, public type:string, public totalSize:number) {
+	public constructor(public scope: Scope, public name:string, public mangledName:string, public type:string, public totalSize:number) {
 	}
 }
 
@@ -25,7 +27,8 @@ export class Scope {
 	}
 
 	public addVariable(name:string, type:string, totalSize:number):ScopeVariable {
-		let variable=new ScopeVariable(this, name, type, totalSize);
+		let managedName=this.genNewSymbolPrefix()+'_variable_'+Generator.escapeName(name);
+		let variable=new ScopeVariable(this, name, managedName, type, totalSize);
 		this.variables.push(variable);
 		return variable;
 	}
