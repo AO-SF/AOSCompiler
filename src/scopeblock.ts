@@ -11,6 +11,9 @@ export class Scope {
 	}
 
 	public getVariableByName(name:string ):null | ScopeVariable {
+		for(let i=0; i<this.variables.length; ++i)
+			if (this.variables[i].name==name)
+				return this.variables[i];
 		return null;
 	}
 }
@@ -31,5 +34,14 @@ export class ScopeStack {
 
 	public pop() {
 		this.scopes.pop();
+	}
+
+	public getVariableByName(name: string):null | ScopeVariable {
+		for(let i=0; i<this.scopes.length; ++i) {
+			let variable=this.scopes[i].getVariableByName(name);
+			if (variable!==null)
+				return variable;
+		}
+		return null;
 	}
 }
