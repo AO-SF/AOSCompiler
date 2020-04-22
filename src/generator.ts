@@ -137,6 +137,38 @@ export class Generator {
 			case AstNodeType.ExpressionAssignment: {
 			} break;
 			case AstNodeType.ExpressionInequality: {
+				let output='';
+
+				// Generate LHS code and save value onto stack
+				let lhsOutput=this.generateNode(node.children[0]);
+				if (lhsOutput===null)
+					return null;
+
+				output+=lhsOutput;
+				output+='push16 r0\n';
+
+				// Generate RHS code and save value into r1
+				let rhsOutput=this.generateNode(node.children[1]);
+				if (rhsOutput===null)
+					return null;
+
+				output+=rhsOutput;
+				output+='mov r1 r0\n';
+
+				// Compare code
+				output+='pop16 r0\n';
+				output+='cmp r1 r0 r1\n';
+				output+='mov r0 1\n';
+				switch(node.tokens[0].text) {
+					case '<': output+='skiplt r1\n'; break;
+					case '<=': output+='skiple r1\n'; break;
+					case '>': output+='skipgt r1\n'; break;
+					case '<=': output+='skipge r1\n'; break;
+					default: return null; break; // TODO: add error message probably
+				}
+				output+='mov r0 0\n';
+
+				return output;
 			} break;
 			case AstNodeType.ExpressionAddition: {
 				let output='';
