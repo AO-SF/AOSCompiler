@@ -1,6 +1,7 @@
 import { AstNode, AstNodeType } from './ast';
 import { Parser } from './parser';
 import { Scope, ScopeVariable, ScopeStack } from './scopeblock';
+import { Token } from './tokenizer';
 
 export class Generator {
 	private scopeStack: ScopeStack = new ScopeStack();
@@ -275,7 +276,7 @@ export class Generator {
 						return 'mov r0 '+terminalStr+'\n';
 
 					// Bad terminal
-					console.log('Could not generate code: bad terminal literal \''+terminalStr+'\'');
+					this.printError('bad literal \''+terminalStr+'\' in expression', node.tokens[0]);
 					return null;
 				}
 			} break;
@@ -283,7 +284,7 @@ export class Generator {
 			} break;
 		}
 
-		console.log('Could not generate code: unexpected/unhandled node of type '+AstNodeType[node.type]); // TODO: improve this
+		this.printError('unexpected/unhandled node of type '+AstNodeType[node.type], null); // TODO: can we find most relevant token to pass?
 		return null;
 	}
 
@@ -307,5 +308,12 @@ export class Generator {
 			return 2;
 		else
 			return 0;
+	}
+
+	public printError(message: string, token:null|Token) {
+		if (token!==null)
+			console.log('Could not generate code: '+message+' ('+token.location.toString()+')');
+		else
+			console.log('Could not generate code: '+message);
 	}
 }
