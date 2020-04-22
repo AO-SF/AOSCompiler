@@ -23,32 +23,44 @@ export class Generator {
 	private generateNode(node: AstNode):null | string {
 		switch(node.type) {
 			case AstNodeType.Root: {
-				let output='';
+				// Create global scope
+				this.scopeStack.push(new Scope('global'));
 
 				// Require includes
-				output+='; Includes\n';
-				output+='require lib/sys/syscall.s\n';
+				let outputIncludes='';
+				outputIncludes+='; Includes\n';
+				outputIncludes+='require lib/sys/syscall.s\n';
 
-				output+='\n';
+				outputIncludes+='\n';
 
 				// Initial boilerplate to implement main function
 				// TODO: prepare argc and argv
-				output+='; Call main and handle exit code once returns\n';
-				output+='call '+this.mangleNameFunction('main')+'\n';
-				output+='mov r1 r0\n';
-				output+='mov r0 SyscallIdExit\n';
-				output+='syscall\n';
+				let outputStart='';
+				outputStart+='; Call main and handle exit code once returns\n';
+				outputStart+='call '+this.mangleNameFunction('main')+'\n';
+				outputStart+='mov r1 r0\n';
+				outputStart+='mov r0 SyscallIdExit\n';
+				outputStart+='syscall\n';
 
-				output+='\n';
+				outputStart+='\n';
 
 				// Generate code for children
-				this.scopeStack.push(new Scope('global'));
+				let outputCode='';
 				for(let i=0; i<node.children.length; ++i) {
 					let childOutput=this.generateNode(node.children[i]);
 					if (childOutput===null)
 						return null;
-					output+=childOutput;
+					outputCode+=childOutput;
 				}
+
+				// Combine all parts for full output
+				let output='';
+
+				output+=outputIncludes;
+				output+=outputStart;
+				output+=outputCode;
+
+				// Pop scope
 				this.scopeStack.pop();
 
 				return output;
