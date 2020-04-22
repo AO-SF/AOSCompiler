@@ -18,7 +18,7 @@ export class Parser {
 			switch(currNode.type) {
 				case AstNodeType.Root:
 					// Type to start a definition (variable or function)?
-					if (this.strIsBaseType(token.text)) {
+					if (Parser.strIsBaseType(token.text)) {
 						this.nodeStackPush(AstNodeType.Definition);
 
 						input.unshift(token);
@@ -55,7 +55,7 @@ export class Parser {
 				break;
 				case AstNodeType.Type:
 					// Base type?
-					if (currNode.tokens.length==0 && this.strIsBaseType(token.text)) {
+					if (currNode.tokens.length==0 && Parser.strIsBaseType(token.text)) {
 						currNode.tokens.push(token);
 
 						continue;
@@ -69,7 +69,7 @@ export class Parser {
 					}
 
 					// Symbol to terminate type?
-					if (currNode.tokens.length>0 && this.strIsSymbol(token.text)) {
+					if (currNode.tokens.length>0 && Parser.strIsSymbol(token.text)) {
 						this.nodeStackPop();
 
 						input.unshift(token);
@@ -79,7 +79,7 @@ export class Parser {
 				break;
 				case AstNodeType.Name:
 					// Symbol is all we can accept
-					if (this.strIsSymbol(token.text)) {
+					if (Parser.strIsSymbol(token.text)) {
 						currNode.tokens.push(token);
 
 						this.nodeStackPop();
@@ -149,7 +149,7 @@ export class Parser {
 				break;
 				case AstNodeType.Statement:
 					// Type suggesting variable definition?
-					if (this.strIsBaseType(token.text)) {
+					if (Parser.strIsBaseType(token.text)) {
 						this.nodeStackPush(AstNodeType.VariableDefinition);
 
 						input.unshift(token);
@@ -158,7 +158,7 @@ export class Parser {
 					}
 
 					// Terminal literal suggesting part of an expression?
-					if (this.strIsTerminal(token.text)) {
+					if (Parser.strIsTerminal(token.text)) {
 						this.nodeStackPush(AstNodeType.Expression);
 
 						input.unshift(token);
@@ -334,7 +334,7 @@ export class Parser {
 				break;
 				case AstNodeType.ExpressionTerminal:
 					// Number or symbol?
-					if (this.strIsTerminal(token.text)) {
+					if (Parser.strIsTerminal(token.text)) {
 						currNode.tokens.push(token);
 
 						this.nodeStackPop();
@@ -455,24 +455,24 @@ export class Parser {
 		this.nodeStack.pop();
 	}
 
-	private strIsBaseType(str: string):boolean {
+	public static strIsBaseType(str: string):boolean {
 		if (str=='uint8_t' || str=='uint16_t' || str=='void')
 			return true;
 		return false;
 	}
 
-	private strIsKeyword(str: string):boolean {
+	public static strIsKeyword(str: string):boolean {
 		if (str=='return' || str=='if' || str=='while')
 			return true;
 		return false;
 	}
 
-	private strIsSymbol(str: string):boolean {
+	public static strIsSymbol(str: string):boolean {
 		if (str.length==0)
 			return false;
-		if (this.strIsKeyword(str))
+		if (Parser.strIsKeyword(str))
 			return false;
-		if (this.strIsBaseType(str))
+		if (Parser.strIsBaseType(str))
 			return false;
 		for(let i=0; i<str.length; ++i) {
 			let c=str[i];
@@ -489,17 +489,17 @@ export class Parser {
 		return true;
 	}
 
-	private strIsTerminal(str: string) {
-		if (this.strIsNumber(str))
+	public static strIsTerminal(str: string) {
+		if (Parser.strIsNumber(str))
 			return true;
 
-		if (this.strIsSymbol(str))
+		if (Parser.strIsSymbol(str))
 			return true;
 
 		return false;
 	}
 
-	private strIsNumber(str: string) {
+	public static strIsNumber(str: string) {
 		if (str.length==0)
 			return false;
 
