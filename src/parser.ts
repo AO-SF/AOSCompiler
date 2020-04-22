@@ -369,7 +369,7 @@ export class Parser {
 			}
 
 			// Bad sequence of tokens
-			console.log("Could not parse: unexpected token '"+token.text+"' (file '"+token.file+"', line "+token.lineNum+", column "+token.columnNum+", state "+this.nodeStackGetHierarchyString()+")");
+			console.log('Could not parse: unexpected token \''+token.text+'\' ('+token.location.toString()+', state '+this.nodeStackGetHierarchyString()+')');
 			return null;
 		}
 

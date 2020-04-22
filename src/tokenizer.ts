@@ -1,5 +1,14 @@
+export class TokenLocation {
+	public constructor(public file: string, public lineNum: number, public columnNum: number) {
+	}
+
+	public toString():string {
+		return 'file \''+this.file+'\', line '+this.lineNum+', column '+this.columnNum;
+	}
+}
+
 export class Token {
-	public constructor(public text: string, public file: string, public lineNum: number, public columnNum: number) {
+	public constructor(public text: string, public location:TokenLocation) {
 	}
 }
 
@@ -27,7 +36,7 @@ export class Tokenizer {
 					if (c2=='"')
 						break;
 				}
-				tokens.push(new Token(text, file, lineNum, columnNum));
+				tokens.push(new Token(text, new TokenLocation(file, lineNum, columnNum)));
 
 				continue;
 			}
@@ -79,7 +88,7 @@ export class Tokenizer {
 					text+=c2;
 					++i;
 				}
-				tokens.push(new Token(text, file, lineNum, columnNum));
+				tokens.push(new Token(text, new TokenLocation(file, lineNum, columnNum)));
 
 				continue;
 			}
@@ -88,7 +97,7 @@ export class Tokenizer {
 			let j;
 			for(j=0; j<this.operators.length; ++j) {
 				if (sub.startsWith(this.operators[j])) {
-					tokens.push(new Token(this.operators[j], file, lineNum, columnNum));
+					tokens.push(new Token(this.operators[j], new TokenLocation(file, lineNum, columnNum)));
 					i+=this.operators[j].length-1;
 					break;
 				}
