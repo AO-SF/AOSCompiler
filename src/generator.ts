@@ -292,7 +292,7 @@ export class Generator {
 		return 'function'+Scope.separator+this.escapeName(input);
 	}
 
-	private escapeName(input: string):string {
+	public static escapeName(input: string):string {
 		return input.replace('_', '_U'); // prevent any double underscores being passed on, as we use these for our own separators
 	}
 
