@@ -138,6 +138,41 @@ export class Generator {
 				return output;
 			} break;
 			case AstNodeType.StatementWhile: {
+				let output='';
+
+				let conditionNode=node.children[0];
+				let bodyNode=node.children[1];
+
+				// Generate label names to use later
+				let loopName=this.scopes[this.scopes.length-1].genNewSymbolPrefix()+'_loop';
+				let startLabel=loopName+'_start';
+				let endLabel=loopName+'_end';
+
+				// Start label
+				output+='label '+startLabel+'\n';
+
+				// Condition checking
+				let conditionOutput=this.generateNode(conditionNode);
+				if (conditionOutput===null)
+					return null;
+				output+=conditionOutput;
+				output+='cmp r0 r0 r0\n';
+				output+='skipneqz r0\n';
+				output+='jmp '+endLabel+'\n';
+
+				// Body
+				this.scopes.push(new ScopeBlock(loopName+'_body'));
+				let bodyOutput=this.generateNode(bodyNode);
+				if (bodyOutput===null)
+					return null;
+				output+=bodyOutput;
+				this.scopes.pop();
+
+				// Jump back to start and end label
+				output+='jmp '+startLabel+'\n';
+				output+='label '+endLabel+'\n';
+
+				return output;
 			} break;
 			case AstNodeType.Expression: {
 				// Goal of these Expression cases is to return value of (sub) expression in r0 (if any)
