@@ -1,4 +1,5 @@
 import { AstNode, AstNodeType } from './ast';
+import { Parser } from './parser';
 import { Scope, ScopeVariable, ScopeStack } from './scopeblock';
 
 export class Generator {
@@ -254,8 +255,17 @@ export class Generator {
 			} break;
 			case AstNodeType.ExpressionTerminal: {
 				// No children? Must be literal
-				if (node.children.length==0)
-					return 'mov r0 '+node.tokens[0].text+'\n';
+				if (node.children.length==0) {
+					let terminalStr=node.tokens[0].text;
+
+					// Terminal is literal number?
+					if (Parser.strIsNumber(terminalStr))
+						return 'mov r0 '+terminalStr+'\n';
+
+					// Bad terminal
+					console.log('Could not generate code: bad terminal literal \''+terminalStr+'\'');
+					return null;
+				}
 			} break;
 			case AstNodeType.ExpressionBrackets: {
 			} break;
