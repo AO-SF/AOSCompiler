@@ -1,6 +1,8 @@
 import { AstNode, AstNodeType } from './ast';
+import { ScopeBlock } from './scopeblock';
 
 export class Generator {
+	private scopes: ScopeBlock[] = [];
 	public constructor() {
 	}
 
@@ -8,6 +10,9 @@ export class Generator {
 		// Check we have been given a full AST starting from the root
 		if (rootNode.type!=AstNodeType.Root || rootNode.parent!==null)
 			return null;
+
+		// Reset state
+		this.scopes=[];
 
 		// Generate from given AST
 		return this.generateNode(rootNode);
@@ -35,12 +40,14 @@ export class Generator {
 				output+='\n';
 
 				// Generate code for children
+				this.scopes.push(new ScopeBlock('global'));
 				for(let i=0; i<node.children.length; ++i) {
 					let childOutput=this.generateNode(node.children[i]);
 					if (childOutput===null)
 						return null;
 					output+=childOutput;
 				}
+				this.scopes.pop();
 
 				return output;
 			} break;
@@ -70,10 +77,12 @@ export class Generator {
 				// TODO: handle this
 
 				// Final child is Block representing function body
+				this.scopes.push(new ScopeBlock(this.mangleNameFunction(nameNode.tokens[0].text)));
 				let blockOutput=this.generateNode(bodyNode);
 				if (blockOutput===null)
 					return null;
 				output+=blockOutput;
+				this.scopes.pop();
 
 				// Add return statement
 				// TODO: don't bother if one already?
