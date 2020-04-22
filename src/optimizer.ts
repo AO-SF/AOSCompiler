@@ -25,7 +25,6 @@ export class Optimizer {
 				case AstNodeType.StatementWhile:
 				case AstNodeType.Expression:
 				case AstNodeType.ExpressionTerminal:
-				case AstNodeType.ExpressionBrackets:
 					// No optimizations available
 				break;
 				case AstNodeType.Statement:
@@ -35,6 +34,7 @@ export class Optimizer {
 						--i;
 					}
 				break;
+				case AstNodeType.ExpressionBrackets:
 				case AstNodeType.ExpressionAssignment:
 				case AstNodeType.ExpressionInequality:
 				case AstNodeType.ExpressionAddition:
