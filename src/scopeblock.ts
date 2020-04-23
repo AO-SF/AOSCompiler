@@ -28,8 +28,9 @@ export class Scope {
 	private nextSubLabelId=0;
 
 	public symbols: ScopeSymbol[] = [];
+	public children: Scope[] = [];
 
-	public constructor(public name:string) {
+	public constructor(public name:string, public parent:null|Scope) {
 	}
 
 	public genNewSymbolMangledName():string {
@@ -76,8 +77,10 @@ export class ScopeStack {
 		let parentScope=this.peek();
 		if (parentScope!==null)
 				name=parentScope.name+name;
-		let scope=new Scope(name);
+		let scope=new Scope(name, parentScope);
 		this.scopes.push(scope);
+		if (parentScope!==null)
+			parentScope.children.push(scope);
 		return scope;
 	}
 
