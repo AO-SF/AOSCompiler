@@ -59,10 +59,26 @@ export class Generator {
 
 				outputStart+='\n';
 
+				// Generate code for global variables (has to be done after generating code from children, so that the global scope is populated)
+				let outputGlobals='';
+				outputGlobals+='; Global variables\n';
+
+				for(let i=0; i<this.scopeStack.peek()!.symbols.length; ++i) {
+					let variable=this.scopeStack.peek()!.symbols[i];
+					if (!(variable instanceof ScopeVariable))
+						continue;
+
+					// We use 'allocate byte' pseudo asm instruction for these
+					outputGlobals+='ab '+variable.mangledName+' '+variable.totalSize+'\n';
+				}
+
+				outputGlobals+='\n';
+
 				// Combine all parts for full output
 				let output='';
 
 				output+=outputIncludes;
+				output+=outputGlobals;
 				output+=outputStart;
 				output+=outputCode;
 
@@ -77,8 +93,43 @@ export class Generator {
 			break;
 			case AstNodeType.Name:
 			break;
-			case AstNodeType.VariableDefinition:
-			break;
+			case AstNodeType.VariableDefinition: {
+				let output='';
+
+				let nameNode=node.children[0];
+				let name=nameNode.tokens[0].text;
+
+				// See if name already defined (in current scope or any ones above)
+				let previouslyDefined=this.scopeStack.getSymbolByName(name);
+				if (previouslyDefined!==null) {
+					this.printError('cannot redefine symbol \''+name+'\' as variable (previously defined at '+previouslyDefined.definitionToken.location.toString()+')', nameNode.tokens[0]);
+					return null;
+				}
+
+				// Grab type
+				let type='';
+				for(let i=0; i<node.children[1].tokens.length; ++i)
+					type+=node.children[1].tokens[i].text;
+
+				// Determine size of variable in memory based on type
+				let varEntrySize=this.typeToSize(type);
+				let varEntryCount=1;
+				let varTotalSize=varEntrySize*varEntryCount;
+
+				// Define this name by adding it to list of variables in this scope
+				this.scopeStack.peek()!.addVariable(name, type, varTotalSize, nameNode.tokens[0]);
+
+				// Scope-type-specific logic
+				// Note: global variables do not need any code generating here - this is done in root node handling.
+				if (this.scopeStack.peek()!.name!='global') {
+					// Automatic (scope-specific) variable
+					// TODO: this
+					this.printError('internal error - unimplemented automatic variable logic (definition)', nameNode.tokens[0]);
+					return null;
+				}
+
+				return output;
+			} break;
 			case AstNodeType.FunctionDefinition: {
 				let output='';
 
@@ -211,6 +262,52 @@ export class Generator {
 				return this.generateNode(node.children[0]);
 			} break;
 			case AstNodeType.ExpressionAssignment: {
+				let output='';
+
+				let lhsNode=node.children[0];
+				let rhsNode=node.children[1];
+
+				// Is the LHS even a registered variable?
+				let name=lhsNode.tokens[0].text;
+				let lhsSymbol=this.scopeStack.getSymbolByName(name);
+				if (lhsSymbol===null) {
+					this.printError('undefined symbol \''+name+'\' as destination in assignment', lhsNode.tokens[0]);
+					return null;
+				}
+
+				if (!(lhsSymbol instanceof ScopeVariable)) {
+					this.printError('cannot use non-variable symbol \''+name+'\' as destination in assignment', lhsNode.tokens[0]);
+					return null;
+				}
+
+				let lhsVariable=lhsSymbol as ScopeVariable;
+
+				// Generate code to calculate RHS value
+				let rhsOutput=this.generateNode(rhsNode);
+				if (rhsOutput===null)
+					return null;
+				output+=rhsOutput;
+
+				// Store into LHS variable
+				if (lhsVariable.scope.name=='global') {
+					// Global variable - easy as these have fixed addresses
+					output+='mov r1 '+lhsVariable.mangledName+'\n';
+					if (lhsVariable.totalSize==1)
+						output+='store8 r1 r0\n';
+					else if (lhsVariable.totalSize==2)
+						output+='store16 r1 r0\n';
+					else {
+						// TODO: this
+						this.printError('internal error - unimplemented large-variable logic (assignment)', lhsNode.tokens[0]);
+						return null;
+					}
+				} else {
+					// TODO: this
+					this.printError('internal error - unimplemented automatic variable logic (assignment)', lhsNode.tokens[0]);
+					return null;
+				}
+
+				return output;
 			} break;
 			case AstNodeType.ExpressionInequality: {
 				let output='';
@@ -291,6 +388,41 @@ export class Generator {
 					// Terminal is literal number?
 					if (Parser.strIsNumber(terminalStr))
 						return 'mov r0 '+terminalStr+'\n';
+
+					// Terminal is symbol name?
+					let terminalSymbol=this.scopeStack.getSymbolByName(terminalStr);
+					if (terminalSymbol!==null) {
+						if (terminalSymbol instanceof ScopeVariable) {
+							let terminalVariable=terminalSymbol as ScopeVariable;
+							if (terminalVariable.scope.name=='global') {
+								// Global variables (easy due to having a fixed address)
+								let output='';
+								output+='mov r0 '+terminalVariable.mangledName+'\n';
+								if (terminalVariable.totalSize==1)
+									output+='load8 r0 r0\n';
+								else if (terminalVariable.totalSize==2)
+									output+='load16 r0 r0\n';
+								else {
+									// TODO: this
+									this.printError('internal error - unimplemented large-variable logic (expression terminal)', node.tokens[0]);
+									return null;
+								}
+
+								return output;
+							} else {
+								// Automatic variables
+								// TODO: this
+								this.printError('internal error - unimplemented automatic variable logic (expression terminal)', node.tokens[0]);
+								return null;
+							}
+						} else if (terminalSymbol instanceof ScopeFunction) {
+							this.printError('cannot use function symbol \''+terminalSymbol.name+'\' as a value', node.tokens[0]);
+							return null;
+						} else {
+							this.printError('internal error - unhandled symbol type for \''+terminalSymbol.name+'\' (expression terminal)', node.tokens[0]);
+							return null;
+						}
+					}
 
 					// Bad terminal
 					this.printError('bad literal \''+terminalStr+'\' in expression', node.tokens[0]);
