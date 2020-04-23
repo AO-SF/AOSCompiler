@@ -93,4 +93,15 @@ export class ScopeStack {
 		}
 		return null;
 	}
+
+	// If scopes is empty or contains only the global scope, this returns null.
+	// Otherwise this returns the mangled name for whichever function this scope either is or is descendant from.
+	public getFunctionMangledName():null | string {
+		// HACK: this assumes the 2nd scope in the list is always a function, may not always be true in the future
+
+		if (this.scopes.length<2)
+			return null;
+
+		return this.scopes[1].name;
+	}
 }
