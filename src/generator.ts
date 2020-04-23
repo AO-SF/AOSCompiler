@@ -367,9 +367,9 @@ export class Generator {
 					// Execute operation
 					output+='pop16 r0\n'; // restore previous operand
 					if (node.tokens[i].text=='+')
-						output+='add r0 r1\n';
+						output+='add r0 r0 r1\n';
 					else if (node.tokens[i].text=='-')
-						output+='sub r0 r1\n';
+						output+='sub r0 r0 r1\n';
 					output+='push16 r0\n'; // save result ready to act as next operand
 				}
 
