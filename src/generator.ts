@@ -1,6 +1,6 @@
 import { AstNode, AstNodeType } from './ast';
 import { Parser } from './parser';
-import { Scope, ScopeVariable, ScopeStack } from './scopeblock';
+import { Scope, ScopeSymbol, ScopeVariable, ScopeStack } from './scopeblock';
 import { Token } from './tokenizer';
 
 export class Generator {

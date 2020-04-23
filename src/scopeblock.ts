@@ -1,16 +1,22 @@
 import { Generator } from './generator';
+import { Token } from './tokenizer';
 
-export class ScopeVariable {
-	public constructor(public scope: Scope, public name:string, public mangledName:string, public type:string, public totalSize:number) {
+export class ScopeSymbol {
+	public constructor(public scope: Scope, public name:string, public mangledName:string, public definitionToken: Token) {
 	}
 }
 
+export class ScopeVariable extends ScopeSymbol {
+	public constructor(scope: Scope, name:string, mangledName:string, definitionToken: Token, public type:string, public totalSize:number) {
+		super(scope, name, mangledName, definitionToken);;
+	}
+}
 export class Scope {
 	public static separator='__';
 
 	private nextSubLabelId=0;
 
-	public variables: ScopeVariable[] = [];
+	public symbols: ScopeSymbol[] = [];
 
 	public constructor(public name:string) {
 	}
@@ -19,17 +25,17 @@ export class Scope {
 		return this.name+Scope.separator+(this.nextSubLabelId++);
 	}
 
-	public getVariableByName(name:string ):null | ScopeVariable {
-		for(let i=0; i<this.variables.length; ++i)
-			if (this.variables[i].name==name)
-				return this.variables[i];
+	public getSymbolByName(name:string ):null | ScopeSymbol {
+		for(let i=0; i<this.symbols.length; ++i)
+			if (this.symbols[i].name==name)
+				return this.symbols[i];
 		return null;
 	}
 
-	public addVariable(name:string, type:string, totalSize:number):ScopeVariable {
+	public addVariable(name:string, type:string, totalSize:number, definitionToken:Token):ScopeSymbol {
 		let managedName=this.genNewSymbolPrefix()+'_variable_'+Generator.escapeName(name);
-		let variable=new ScopeVariable(this, name, managedName, type, totalSize);
-		this.variables.push(variable);
+		let variable=new ScopeVariable(this, name, managedName, definitionToken, type, totalSize);
+		this.symbols.push(variable);
 		return variable;
 	}
 }
@@ -44,19 +50,24 @@ export class ScopeStack {
 		return (this.scopes.length>0 ? this.scopes[this.scopes.length-1] : null);
 	}
 
-	public push(scope: Scope) {
+	public push(name: string):Scope {
+		let parentScope=this.peek();
+		if (parentScope!==null)
+				name=parentScope.name+name;
+		let scope=new Scope(name);
 		this.scopes.push(scope);
+		return scope;
 	}
 
 	public pop() {
 		this.scopes.pop();
 	}
 
-	public getVariableByName(name: string):null | ScopeVariable {
+	public getSymbolByName(name: string):null | ScopeSymbol {
 		for(let i=0; i<this.scopes.length; ++i) {
-			let variable=this.scopes[i].getVariableByName(name);
-			if (variable!==null)
-				return variable;
+			let symbol=this.scopes[i].getSymbolByName(name);
+			if (symbol!==null)
+				return symbol;
 		}
 		return null;
 	}
