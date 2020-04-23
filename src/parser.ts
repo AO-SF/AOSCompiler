@@ -177,7 +177,8 @@ export class Parser {
 
 					// While statement?
 					if (token.text=='while') {
-						this.nodeStackPush(AstNodeType.StatementWhile);
+						currNode=this.nodeStackPush(AstNodeType.StatementWhile);
+						currNode.tokens.push(token); // add token for better error reporting later
 
 						continue;
 					}
@@ -203,6 +204,9 @@ export class Parser {
 				case AstNodeType.StatementReturn:
 					// 'return' keyword to start statement?
 					if (currNode.tokens.length==0 && token.text=='return') {
+						// Add token for better error reporting later
+						currNode.tokens.push(token);
+
 						// Peek at next token - if semicolon then void return
 						if (input.length>0 && input[0].text==';') {
 							this.nodeStackPop();
