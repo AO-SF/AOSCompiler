@@ -2,9 +2,6 @@ import { Generator } from './generator';
 import { Token } from './tokenizer';
 
 export class ScopeSymbol {
-	public isVariable:boolean=false;
-	public isFunction:boolean=false;
-
 	public constructor(public scope: Scope, public name:string, public mangledName:string, public definitionToken: Token) {
 	}
 }
@@ -12,14 +9,12 @@ export class ScopeSymbol {
 export class ScopeVariable extends ScopeSymbol {
 	public constructor(scope: Scope, name:string, mangledName:string, definitionToken: Token, public type:string, public totalSize:number) {
 		super(scope, name, mangledName, definitionToken);
-		this.isVariable=true;
 	}
 }
 
 export class ScopeFunction extends ScopeSymbol {
 	public constructor(scope: Scope, name:string, mangledName:string, definitionToken: Token) {
 		super(scope, name, mangledName, definitionToken);
-		this.isFunction=true;
 	}
 }
 
