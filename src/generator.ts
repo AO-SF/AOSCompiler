@@ -1,6 +1,6 @@
 import { AstNode, AstNodeType } from './ast';
 import { Parser } from './parser';
-import { Scope, ScopeSymbol, ScopeVariable, ScopeStack } from './scopeblock';
+import { Scope, ScopeSymbol, ScopeVariable, ScopeFunction, ScopeStack } from './scopeblock';
 import { Token } from './tokenizer';
 
 export class Generator {
@@ -25,7 +25,7 @@ export class Generator {
 		switch(node.type) {
 			case AstNodeType.Root: {
 				// Create global scope
-				this.scopeStack.push(new Scope('global'));
+				this.scopeStack.push('global');
 
 				// Require includes
 				let outputIncludes='';
@@ -33,17 +33,6 @@ export class Generator {
 				outputIncludes+='require lib/sys/syscall.s\n';
 
 				outputIncludes+='\n';
-
-				// Initial boilerplate to implement main function
-				// TODO: prepare argc and argv
-				let outputStart='';
-				outputStart+='; Call main and handle exit code once returns\n';
-				outputStart+='call '+this.mangleNameFunction('main')+'\n';
-				outputStart+='mov r1 r0\n';
-				outputStart+='mov r0 SyscallIdExit\n';
-				outputStart+='syscall\n';
-
-				outputStart+='\n';
 
 				// Generate code for children
 				let outputCode='';
@@ -53,6 +42,22 @@ export class Generator {
 						return null;
 					outputCode+=childOutput;
 				}
+
+				// Initial boilerplate to implement main function (has to be done after generating code from children, so that main symbol is defined in the global scope)
+				// TODO: prepare argc and argv
+				let outputStart='';
+				outputStart+='; Call main and handle exit code once returns\n';
+				let mainFunction=this.scopeStack.getSymbolByName('main');
+				if (mainFunction===null || !(mainFunction instanceof ScopeFunction)) {
+					this.printError('missing \'main\' function', null);
+					return null;
+				}
+				outputStart+='call '+mainFunction.mangledName+'\n';
+				outputStart+='mov r1 r0\n';
+				outputStart+='mov r0 SyscallIdExit\n';
+				outputStart+='syscall\n';
+
+				outputStart+='\n';
 
 				// Combine all parts for full output
 				let output='';
@@ -83,16 +88,28 @@ export class Generator {
 
 				// First child is VariableDefinition defining function's name and return type
 				let nameNode=nameTypeNode.children[0];
+				let name=nameNode.tokens[0].text;
 				let typeNode=nameTypeNode.children[1];
 
-				output+='; User defined function \''+nameNode.tokens[0].text+'\'\n';
-				output+='label '+this.mangleNameFunction(nameNode.tokens[0].text)+'\n';
+				// Check if symbol with same name already defined previously
+				let previouslyDefined=this.scopeStack.getSymbolByName(name);
+				if (previouslyDefined!==null) {
+					this.printError('cannot redefine symbol \''+name+'\' as function (previously defined at '+previouslyDefined.definitionToken.location.toString()+')', nameNode.tokens[0]);
+					return null;
+				}
+
+				// Add function to current scope
+				let func=this.scopeStack.peek()!.addfunction(name, nameNode.tokens[0]);
+
+				// General code for function start
+				output+='; User defined function \''+func.name+'\'\n';
+				output+='label '+func.mangledName+'\n';
 
 				// Optional next child is FunctionDefinitionArguments
 				// TODO: handle this
 
 				// Final child is Block representing function body
-				this.scopeStack.push(new Scope(this.mangleNameFunction(nameNode.tokens[0].text)));
+				this.scopeStack.push(func.getScopeName());
 				let blockOutput=this.generateNode(bodyNode);
 				if (blockOutput===null)
 					return null;
@@ -159,9 +176,9 @@ export class Generator {
 				let bodyNode=node.children[1];
 
 				// Generate label names to use later
-				let loopName=this.scopeStack.peek()!.genNewSymbolPrefix()+'_loop';
-				let startLabel=loopName+'_start';
-				let endLabel=loopName+'_end';
+				let mangledPrefix=this.scopeStack.peek()!.genNewSymbolMangledPrefix()+'_loop';
+				let startLabel=this.scopeStack.peek()!.name+mangledPrefix+'start';
+				let endLabel=this.scopeStack.peek()!.name+mangledPrefix+'end';
 
 				// Start label
 				output+='label '+startLabel+'\n';
@@ -176,7 +193,7 @@ export class Generator {
 				output+='jmp '+endLabel+'\n';
 
 				// Body
-				this.scopeStack.push(new Scope(loopName+'_body'));
+				this.scopeStack.push(mangledPrefix+'body');
 				let bodyOutput=this.generateNode(bodyNode);
 				if (bodyOutput===null)
 					return null;
@@ -286,10 +303,6 @@ export class Generator {
 
 		this.printError('unexpected/unhandled node of type '+AstNodeType[node.type], null); // TODO: can we find most relevant token to pass?
 		return null;
-	}
-
-	private mangleNameFunction(input: string):string {
-		return 'function'+Scope.separator+this.escapeName(input);
 	}
 
 	public static escapeName(input: string):string {

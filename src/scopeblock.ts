@@ -32,8 +32,12 @@ export class Scope {
 	public constructor(public name:string) {
 	}
 
-	public genNewSymbolPrefix():string {
-		return this.name+Scope.separator+(this.nextSubLabelId++);
+	public genNewSymbolMangledName():string {
+		return this.name+this.genNewSymbolMangledPrefix();
+	}
+
+	public genNewSymbolMangledPrefix():string {
+		return Scope.separator+(this.nextSubLabelId++);
 	}
 
 	public getSymbolByName(name:string ):null | ScopeSymbol {
@@ -43,16 +47,16 @@ export class Scope {
 		return null;
 	}
 
-	public addVariable(name:string, type:string, totalSize:number, definitionToken:Token):ScopeSymbol {
-		let managedName=this.genNewSymbolPrefix()+'_variable_'+Generator.escapeName(name);
-		let variable=new ScopeVariable(this, name, managedName, definitionToken, type, totalSize);
+	public addVariable(name:string, type:string, totalSize:number, definitionToken:Token):ScopeVariable {
+		let mangledName=this.genNewSymbolMangledName()+'_variable_'+Generator.escapeName(name);
+		let variable=new ScopeVariable(this, name, mangledName, definitionToken, type, totalSize);
 		this.symbols.push(variable);
 		return variable;
 	}
 
-	public addfunction(name:string, definitionToken:Token):ScopeSymbol {
-		let managedName=this.genNewSymbolPrefix()+'_function_'+Generator.escapeName(name);
-		let func=new ScopeFunction(this, name, managedName, definitionToken);
+	public addfunction(name:string, definitionToken:Token):ScopeFunction {
+		let mangledName=this.genNewSymbolMangledName()+'_function_'+Generator.escapeName(name);
+		let func=new ScopeFunction(this, name, mangledName, definitionToken);
 		this.symbols.push(func);
 		return func;
 	}
