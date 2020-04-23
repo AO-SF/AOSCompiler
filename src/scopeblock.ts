@@ -16,6 +16,10 @@ export class ScopeFunction extends ScopeSymbol {
 	public constructor(scope: Scope, name:string, mangledName:string, definitionToken: Token) {
 		super(scope, name, mangledName, definitionToken);
 	}
+
+	public getScopeName():string {
+		return this.mangledName.substr(this.scope.name.length);
+	}
 }
 
 export class Scope {
