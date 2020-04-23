@@ -119,14 +119,8 @@ export class Generator {
 				// Define this name by adding it to list of variables in this scope
 				this.scopeStack.peek()!.addVariable(name, type, varTotalSize, nameNode.tokens[0]);
 
-				// Scope-type-specific logic
-				// Note: global variables do not need any code generating here - this is done in root node handling.
-				if (this.scopeStack.peek()!.name!='global') {
-					// Automatic (scope-specific) variable
-					// TODO: this
-					this.printError('internal error - unimplemented automatic variable logic (definition)', nameNode.tokens[0]);
-					return null;
-				}
+				// Note: neither global nor automatic variables need any actual code generating here
+				// (globals are created by Root node code, and automatic variables are created by FunctionDefinition node code)
 
 				return output;
 			} break;
