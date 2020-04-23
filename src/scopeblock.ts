@@ -2,15 +2,27 @@ import { Generator } from './generator';
 import { Token } from './tokenizer';
 
 export class ScopeSymbol {
+	public isVariable:boolean=false;
+	public isFunction:boolean=false;
+
 	public constructor(public scope: Scope, public name:string, public mangledName:string, public definitionToken: Token) {
 	}
 }
 
 export class ScopeVariable extends ScopeSymbol {
 	public constructor(scope: Scope, name:string, mangledName:string, definitionToken: Token, public type:string, public totalSize:number) {
-		super(scope, name, mangledName, definitionToken);;
+		super(scope, name, mangledName, definitionToken);
+		this.isVariable=true;
 	}
 }
+
+export class ScopeFunction extends ScopeSymbol {
+	public constructor(scope: Scope, name:string, mangledName:string, definitionToken: Token) {
+		super(scope, name, mangledName, definitionToken);
+		this.isFunction=true;
+	}
+}
+
 export class Scope {
 	public static separator='__';
 
@@ -37,6 +49,13 @@ export class Scope {
 		let variable=new ScopeVariable(this, name, managedName, definitionToken, type, totalSize);
 		this.symbols.push(variable);
 		return variable;
+	}
+
+	public addfunction(name:string, definitionToken:Token):ScopeSymbol {
+		let managedName=this.genNewSymbolPrefix()+'_function_'+Generator.escapeName(name);
+		let func=new ScopeFunction(this, name, managedName, definitionToken);
+		this.symbols.push(func);
+		return func;
 	}
 }
 
