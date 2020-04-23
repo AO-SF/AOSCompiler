@@ -61,6 +61,12 @@ export class Scope {
 		this.symbols.push(func);
 		return func;
 	}
+
+	public debug(identation:number=0) {
+		console.log(' '.repeat(identation)+this.name);
+		for(let i=0; i<this.children.length; ++i)
+			this.children[i].debug(identation+2);
+	}
 }
 
 export class ScopeStack {
@@ -106,5 +112,11 @@ export class ScopeStack {
 			return null;
 
 		return this.scopes[1].name;
+	}
+
+	public debug() {
+		console.log('Scope Stack:');
+		if (this.scopes.length>0)
+			this.scopes[0].debug(2);
 	}
 }
