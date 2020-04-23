@@ -312,7 +312,7 @@ export class Generator {
 
 	public printError(message: string, token:null|Token) {
 		if (token!==null)
-			console.log('Could not generate code: '+message+' ('+token.location.toString()+')');
+			console.log('Could not generate code ('+token.location.toString()+'): '+message);
 		else
 			console.log('Could not generate code: '+message);
 	}
