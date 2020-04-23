@@ -167,8 +167,10 @@ export class Generator {
 				output+=blockOutput;
 				this.scopeStack.pop();
 
-				// Add return statement
-				// TODO: don't bother if one already?
+				// Add return logic, terminating with 'ret' instruction
+				// All 'return' statements within this function will cause flow to jump to this label, with r0 set to return value (if any).
+				// This means r0 needs preserving.
+				output+='label '+func.mangledName+'_end\n';
 				output+='ret\n';
 
 				// Empty line after function
@@ -215,8 +217,13 @@ export class Generator {
 					output+=childOutput;
 				}
 
-				// Add return instruction
-				output+='ret\n';
+				// Jump to function end label to return
+				let funcMangledName=this.scopeStack.getFunctionMangledName();
+				if (funcMangledName===null) {
+					this.printError('\'return\' statement not in function scope', node.tokens[0]);
+					return null;
+				}
+				output+='jmp '+funcMangledName+'_end\n';
 
 				return output;
 			} break;
