@@ -391,12 +391,12 @@ export class Parser {
 		return str;
 	}
 
-	private nodeStackPush(type:AstNodeType) {
+	private nodeStackPush(type:AstNodeType):AstNode {
 		let parent=this.nodeStack[this.nodeStack.length-1];
-		this.nodeStackPushHelper(parent, type);
+		return this.nodeStackPushHelper(parent, type);
 	}
 
-	private nodeStackPushHelper(parent:AstNode, type:AstNodeType) {
+	private nodeStackPushHelper(parent:AstNode, type:AstNodeType):AstNode {
 		let node=parent.createChild(type);
 		this.nodeStack.push(node);
 
@@ -449,6 +449,8 @@ export class Parser {
 				this.nodeStackPushHelper(node, AstNodeType.ExpressionAssignment);
 			break;
 		}
+
+		return node;
 	}
 
 	private nodeStackPop() {
