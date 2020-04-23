@@ -131,7 +131,7 @@ export class Generator {
 				return output;
 			} break;
 			case AstNodeType.FunctionDefinition: {
-				let output='';
+				// TODO: handle FunctionDefinitionArguments
 
 				let nameTypeNode=node.children[0];
 				let argumentsNode=(node.children.length==3 ? node.children[1] : null);
@@ -152,28 +152,35 @@ export class Generator {
 				// Add function to current scope
 				let func=this.scopeStack.peek()!.addfunction(name, nameNode.tokens[0]);
 
-				// General code for function start
-				output+='; User defined function \''+func.name+'\'\n';
-				output+='label '+func.mangledName+'\n';
-
-				// Optional next child is FunctionDefinitionArguments
-				// TODO: handle this
-
-				// Final child is Block representing function body
+				// Enter function scope
 				this.scopeStack.push(func.getScopeName());
-				let blockOutput=this.generateNode(bodyNode);
-				if (blockOutput===null)
+
+				// Generate code for function body from child Block node
+				let outputBody=this.generateNode(bodyNode);
+				if (outputBody===null)
 					return null;
-				output+=blockOutput;
+
+				// Generate code for function start
+				let outputStart='';
+				outputStart+='; User defined function \''+func.name+'\'\n';
+				outputStart+='label '+func.mangledName+'\n';
+
+				// Leave function scope
 				this.scopeStack.pop();
 
 				// Add return logic, terminating with 'ret' instruction
 				// All 'return' statements within this function will cause flow to jump to this label, with r0 set to return value (if any).
 				// This means r0 needs preserving.
-				output+='label '+func.mangledName+'_end\n';
-				output+='ret\n';
+				let outputEnd='';
+				outputEnd+='label '+func.mangledName+'_end\n';
+				outputEnd+='ret\n';
 
-				// Empty line after function
+				// Combine output code produced above (and add empty line after function)
+				let output='';
+
+				output+=outputStart;
+				output+=outputBody;
+				output+=outputEnd;
 				output+='\n';
 
 				return output;
