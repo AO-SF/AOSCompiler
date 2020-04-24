@@ -154,10 +154,17 @@ export class Generator {
 				if (outputBody===null)
 					return null;
 
+				let variableAllocationSize=this.scopeStack.peek()!.getTotalVariableSizeAllocation(); // we have to generate body code before calling this
+
 				// Generate code for function start
 				let outputStart='';
 				outputStart+='; User defined function \''+func.name+'\'\n';
 				outputStart+='label '+func.mangledName+'\n';
+				if (variableAllocationSize>64) {
+					outputStart+='mov r5 '+variableAllocationSize+'\n';
+					outputStart+='add r6 r6 r5\n';
+				} else if (variableAllocationSize>0)
+					outputStart+='inc'+variableAllocationSize+' r6\n';
 
 				// Leave function scope
 				this.scopeStack.pop();
@@ -167,6 +174,11 @@ export class Generator {
 				// This means r0 needs preserving.
 				let outputEnd='';
 				outputEnd+='label '+func.mangledName+'_end\n';
+				if (variableAllocationSize>64) {
+					outputEnd+='mov r5 '+variableAllocationSize+'\n';
+					outputEnd+='sub r6 r6 r5\n';
+				} else if (variableAllocationSize>0)
+					outputEnd+='dec'+variableAllocationSize+' r6\n';
 				outputEnd+='ret\n';
 
 				// Combine output code produced above (and add empty line after function)
