@@ -61,7 +61,6 @@ export class Generator {
 
 				// Generate code for global variables (has to be done after generating code from children, so that the global scope is populated)
 				let outputGlobals='';
-				outputGlobals+='; Global variables\n';
 
 				for(let i=0; i<this.scopeStack.peek()!.symbols.length; ++i) {
 					let variable=this.scopeStack.peek()!.symbols[i];
@@ -72,7 +71,8 @@ export class Generator {
 					outputGlobals+='ab '+variable.mangledName+' '+variable.totalSize+'\n';
 				}
 
-				outputGlobals+='\n';
+				if (outputGlobals.length>0)
+					outputGlobals='; Global variables\n'+outputGlobals+'\n';
 
 				// Combine all parts for full output
 				let output='';
