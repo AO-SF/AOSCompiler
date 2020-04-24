@@ -27,11 +27,12 @@ export class AstNode {
 
 	public tokens: Token[] = [];
 
-	public constructor(public type: AstNodeType) {
+	public constructor(public type: AstNodeType, public id:number) {
 	}
 
-	public createChild(type: AstNodeType): AstNode {
-		let child=new AstNode(type);
+	public createChild(type: AstNodeType, id:number): AstNode {
+		// Create and add child
+		let child=new AstNode(type, id);
 		child.parent=this;
 		this.children.push(child);
 
@@ -47,7 +48,7 @@ export class AstNode {
 		let str=' '.repeat(depth*2);
 
 		// Add type to string
-		str+=AstNodeType[this.type];
+		str+=this.id+' '+AstNodeType[this.type];
 
 		// All text of all tokens (if any)
 		str+=':';

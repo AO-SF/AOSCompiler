@@ -3,12 +3,15 @@ import { Token } from './tokenizer';
 
 export class Parser {
 	private nodeStack: AstNode[];
+	private nextNodeId:number;
 
 	public constructor() {
 	}
 
 	public parse(input: Token[]):null | AstNode {
-		let root = new AstNode(AstNodeType.Root);
+		this.nextNodeId=0;
+
+		let root = new AstNode(AstNodeType.Root, this.nextNodeId++);
 
 		this.nodeStack = [root];
 
@@ -401,7 +404,7 @@ export class Parser {
 	}
 
 	private nodeStackPushHelper(parent:AstNode, type:AstNodeType):AstNode {
-		let node=parent.createChild(type);
+		let node=parent.createChild(type, this.nextNodeId++);
 		this.nodeStack.push(node);
 
 		switch(type) {
