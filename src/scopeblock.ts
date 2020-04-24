@@ -14,6 +14,33 @@ export class ScopeVariable extends ScopeSymbol {
 	public constructor(scope: Scope, name:string, mangledName:string, definitionToken: Token, public type:string, public totalSize:number) {
 		super(scope, name, mangledName, definitionToken);
 	}
+
+	// For global variables, returns 0.
+	// For automatic variables, returns how far into the relevant function's stack storage this variable is.
+	// For example the very first automatic variable defined at the start of a function will return 0,
+	// the next one after it at 2 (assuming first variable is 16 bit).
+	public getStackOffset():number {
+		// Global variable?
+		// (shouldn't really be used in this way anyway)
+		if (this.scope.name=='global')
+			return 0;
+
+		// Find our local offset within our scope.
+		let localOffset=0;
+		for (let i=0; i<this.scope.symbols.length; ++i) {
+			if (!(this.scope.symbols[i] instanceof ScopeVariable))
+				continue;
+			let loopVariable=this.scope.symbols[i] as ScopeVariable;
+			if (loopVariable.name==this.name)
+				break;
+			localOffset+=loopVariable.totalSize;
+		}
+
+		// Find our scope's offset
+		let scopeOffset=this.scope.getStackOffset();
+
+		return scopeOffset+localOffset;
+	}
 }
 
 export class ScopeFunction extends ScopeSymbol {
@@ -111,6 +138,22 @@ export class Scope {
 		return total;
 	}
 
+	// For root scope and immediate descendants (i.e. functions), returns 0.
+	// For all other scopes, returns how far into the relevant function's stack storage the variables in this scope start.
+	// See ScopeVariable.getStackOffset for more information.
+	public getStackOffset():number {
+		// Global variable?
+		// (shouldn't really be used in this way anyway)
+		if (this.name=='global' || this.parent===null)
+			return 0;
+
+		// Handle function scopes
+		if (this.parent.name=='global' || this.parent.parent===null)
+			return 0;
+
+		// This scope must be a sub-scope, and so its variables will be placed after all variables in the parent scope.
+		return this.parent.getStackOffset()+this.parent.getLocalVariableSizeAllocation();
+	}
 	public debug(identation:number=0) {
 		console.log(' '.repeat(identation)+this.name);
 		for(let i=0; i<this.children.length; ++i)
