@@ -6,6 +6,7 @@ import { Token } from './tokenizer';
 export class Generator {
 	private globalScope: Scope = new Scope('global', null);
 	private currentScope: Scope;
+	private globalStackAdjustment:number = 0; // this is required so that we can still determine the address of automatic variables, despite adjusting the stack pointer mid-function
 
 	public constructor() {
 	}
@@ -20,11 +21,154 @@ export class Generator {
 		this.currentScope=this.globalScope;
 		this.globalStackAdjustment=0;
 
-		// Generate from given AST
-		return this.generateNode(rootNode);
+		// Pass to determine scope and variable information
+		if (!this.generateNodePassScopes(rootNode))
+			return null;
+
+		// Final pass to generate asm code
+		return this.generateNodePassCode(rootNode);
 	}
 
-	private generateNode(node: AstNode):null | string {
+	private generateNodePassScopes(node: AstNode):boolean {
+		switch(node.type) {
+			case AstNodeType.Root: {
+				// Pass for children
+				for(let i=0; i<node.children.length; ++i) {
+					if (!this.generateNodePassScopes(node.children[i]))
+						return false;
+				}
+
+				return true;
+			} break;
+			case AstNodeType.Definition:
+			break;
+			case AstNodeType.Type:
+			break;
+			case AstNodeType.Name:
+			break;
+			case AstNodeType.VariableDefinition: {
+				let nameNode=node.children[0];
+				let name=nameNode.tokens[0].text;
+
+				// See if name already defined (in current scope or any ones above)
+				let previouslyDefined=this.currentScope.getSymbolByName(name);
+				if (previouslyDefined!==null) {
+					this.printError('cannot redefine symbol \''+name+'\' as variable (previously defined at '+previouslyDefined.definitionToken.location.toString()+')', nameNode.tokens[0]);
+					return false;
+				}
+
+				// Grab type
+				let type='';
+				for(let i=0; i<node.children[1].tokens.length; ++i)
+					type+=node.children[1].tokens[i].text;
+
+				// Determine size of variable in memory based on type
+				let varEntrySize=this.typeToSize(type);
+				let varEntryCount=1;
+				let varTotalSize=varEntrySize*varEntryCount;
+
+				// Define this name by adding it to list of variables in this scope
+				this.currentScope.addVariable(name, node.id, type, varTotalSize, nameNode.tokens[0]);
+
+				return true;
+			} break;
+			case AstNodeType.FunctionDefinition: {
+				// TODO: handle FunctionDefinitionArguments
+
+				let nameTypeNode=node.children[0];
+				let argumentsNode=(node.children.length==3 ? node.children[1] : null);
+				let bodyNode=(argumentsNode!==null ? node.children[2] : node.children[1]);
+
+				// First child is VariableDefinition defining function's name and return type
+				let nameNode=nameTypeNode.children[0];
+				let name=nameNode.tokens[0].text;
+				let typeNode=nameTypeNode.children[1];
+
+				// Check if symbol with same name already defined previously
+				let previouslyDefined=this.currentScope.getSymbolByName(name);
+				if (previouslyDefined!==null) {
+					this.printError('cannot redefine symbol \''+name+'\' as function (previously defined at '+previouslyDefined.definitionToken.location.toString()+')', nameNode.tokens[0]);
+					return false;
+				}
+
+				// Add function to current scope
+				let func=this.currentScope.addfunction(name, node.id, nameNode.tokens[0]);
+
+				// Enter function scope
+				this.generateNodePassScopesPushScope(func.getScopeName());
+
+				// Pass for children in body
+				if (!this.generateNodePassScopes(bodyNode))
+					return false;
+
+				let variableAllocationSize=this.currentScope.getTotalVariableSizeAllocation(); // we have to generate body code before calling this
+
+				// Leave function scope
+				if (!this.generateNodePassScopesPopScope())
+					return false;
+
+				return true;
+			} break;
+			case AstNodeType.FunctionDefinitionArguments: {
+			} break;
+			case AstNodeType.Block: {
+				// Pass for children
+				for(let i=0; i<node.children.length; ++i) {
+					if (!this.generateNodePassScopes(node.children[i]))
+						return false;
+				}
+				return true;
+			} break;
+			case AstNodeType.Statement: {
+				// Pass for children
+				for(let i=0; i<node.children.length; ++i) {
+					if (!this.generateNodePassScopes(node.children[i]))
+						return false;
+				}
+				return true;
+			} break;
+			case AstNodeType.StatementReturn: {
+				// Pass for children
+				for(let i=0; i<node.children.length; ++i) {
+					if (!this.generateNodePassScopes(node.children[i]))
+						return false;
+				}
+				return true;
+			} break;
+			case AstNodeType.StatementWhile: {
+				let conditionNode=node.children[0];
+				let bodyNode=node.children[1];
+
+				// Generate label names to use later
+				let mangledPrefix=this.currentScope.genNewSymbolMangledPrefix(node.id)+'_loop';
+				let startLabel=this.currentScope.name+mangledPrefix+'start';
+				let endLabel=this.currentScope.name+mangledPrefix+'end';
+
+				// Body
+				this.generateNodePassScopesPushScope(mangledPrefix+'body');
+				if (!this.generateNodePassScopes(bodyNode))
+					return false;
+				if (!this.generateNodePassScopesPopScope())
+					return false;
+
+				return true;
+			} break;
+			case AstNodeType.Expression:
+			case AstNodeType.ExpressionAssignment:
+			case AstNodeType.ExpressionInequality:
+			case AstNodeType.ExpressionAddition:
+			case AstNodeType.ExpressionMultiplication:
+			case AstNodeType.ExpressionTerminal:
+			case AstNodeType.ExpressionBrackets:
+				return true;
+			break;
+		}
+
+		this.printError('unexpected/unhandled node of type '+AstNodeType[node.type], null); // TODO: can we find most relevant token to pass?
+		return false;
+	}
+
+	private generateNodePassCode(node: AstNode):null | string {
 		switch(node.type) {
 			case AstNodeType.Root: {
 				// Require includes
@@ -34,32 +178,7 @@ export class Generator {
 
 				outputIncludes+='\n';
 
-				// Generate code for children
-				let outputCode='';
-				for(let i=0; i<node.children.length; ++i) {
-					let childOutput=this.generateNode(node.children[i]);
-					if (childOutput===null)
-						return null;
-					outputCode+=childOutput;
-				}
-
-				// Initial boilerplate to implement main function (has to be done after generating code from children, so that main symbol is defined in the global scope)
-				// TODO: prepare argc and argv
-				let outputStart='';
-				outputStart+='; Call main and handle exit code once returns\n';
-				let mainFunction=this.currentScope.getSymbolByName('main');
-				if (mainFunction===null || !(mainFunction instanceof ScopeFunction)) {
-					this.printError('missing \'main\' function', null);
-					return null;
-				}
-				outputStart+='call '+mainFunction.mangledName+'\n';
-				outputStart+='mov r1 r0\n';
-				outputStart+='mov r0 SyscallIdExit\n';
-				outputStart+='syscall\n';
-
-				outputStart+='\n';
-
-				// Generate code for global variables (has to be done after generating code from children, so that the global scope is populated)
+				// Generate code for global variables
 				let outputGlobals='';
 
 				for(let i=0; i<this.currentScope.symbols.length; ++i) {
@@ -73,6 +192,30 @@ export class Generator {
 
 				if (outputGlobals.length>0)
 					outputGlobals='; Global variables\n'+outputGlobals+'\n';
+
+				// Initial code to call main function and handle return status
+				let outputStart='';
+				outputStart+='; Call main and handle exit status once returns\n';
+				let mainFunction=this.currentScope.getSymbolByName('main');
+				if (mainFunction===null || !(mainFunction instanceof ScopeFunction)) {
+					this.printError('missing \'main\' function', null);
+					return null;
+				}
+				outputStart+='call '+mainFunction.mangledName+'\n';
+				outputStart+='mov r1 r0\n';
+				outputStart+='mov r0 SyscallIdExit\n';
+				outputStart+='syscall\n';
+
+				outputStart+='\n';
+
+				// Generate code for children
+				let outputCode='';
+				for(let i=0; i<node.children.length; ++i) {
+					let childOutput=this.generateNodePassCode(node.children[i]);
+					if (childOutput===null)
+						return null;
+					outputCode+=childOutput;
+				}
 
 				// Combine all parts for full output
 				let output='';
@@ -91,35 +234,20 @@ export class Generator {
 			case AstNodeType.Name:
 			break;
 			case AstNodeType.VariableDefinition: {
-				let output='';
-
 				let nameNode=node.children[0];
 				let name=nameNode.tokens[0].text;
 
-				// See if name already defined (in current scope or any ones above)
-				let previouslyDefined=this.currentScope.getSymbolByName(name);
-				if (previouslyDefined!==null) {
-					this.printError('cannot redefine symbol \''+name+'\' as variable (previously defined at '+previouslyDefined.definitionToken.location.toString()+')', nameNode.tokens[0]);
+				// Lookup symbol in scope
+				let symbol=this.currentScope.getSymbolByName(name);
+				if (symbol===null  || !(symbol instanceof ScopeVariable)) {
+					this.printError('internal error - bad symbol \''+name+'\'', nameNode.tokens[0]);
 					return null;
 				}
-
-				// Grab type
-				let type='';
-				for(let i=0; i<node.children[1].tokens.length; ++i)
-					type+=node.children[1].tokens[i].text;
-
-				// Determine size of variable in memory based on type
-				let varEntrySize=this.typeToSize(type);
-				let varEntryCount=1;
-				let varTotalSize=varEntrySize*varEntryCount;
-
-				// Define this name by adding it to list of variables in this scope
-				this.currentScope.addVariable(name, type, varTotalSize, nameNode.tokens[0]);
 
 				// Note: neither global nor automatic variables need any actual code generating here
 				// (globals are created by Root node code, and automatic variables are created by FunctionDefinition node code)
 
-				return output;
+				return '';
 			} break;
 			case AstNodeType.FunctionDefinition: {
 				// TODO: handle FunctionDefinitionArguments
@@ -133,27 +261,26 @@ export class Generator {
 				let name=nameNode.tokens[0].text;
 				let typeNode=nameTypeNode.children[1];
 
-				// Check if symbol with same name already defined previously
-				let previouslyDefined=this.currentScope.getSymbolByName(name);
-				if (previouslyDefined!==null) {
-					this.printError('cannot redefine symbol \''+name+'\' as function (previously defined at '+previouslyDefined.definitionToken.location.toString()+')', nameNode.tokens[0]);
+				// Lookup symbol in scope
+				let symbol=this.currentScope.getSymbolByName(name);
+				if (symbol===null  || !(symbol instanceof ScopeFunction)) {
+					this.printError('internal error - bad symbol \''+name+'\'', nameNode.tokens[0]);
 					return null;
 				}
 
-				// Add function to current scope
-				let func=this.currentScope.addfunction(name, nameNode.tokens[0]);
+				let func=symbol as ScopeFunction;
 
 				// Enter function scope
-				this.pushScope(func.getScopeName());
+				if (!this.generateNodePassCodeEnterScope(func.getScopeName()))
+					return null;
 
 				// Generate code for function body from child Block node
-				let outputBody=this.generateNode(bodyNode);
+				let outputBody=this.generateNodePassCode(bodyNode);
 				if (outputBody===null)
 					return null;
 
-				let variableAllocationSize=this.currentScope.getTotalVariableSizeAllocation(); // we have to generate body code before calling this
-
 				// Generate code for function start
+				let variableAllocationSize=this.currentScope.getTotalVariableSizeAllocation();
 				let outputStart='';
 				outputStart+='; User defined function \''+func.name+'\'\n';
 				outputStart+='label '+func.mangledName+'\n';
@@ -164,7 +291,7 @@ export class Generator {
 					outputStart+='inc'+variableAllocationSize+' r6\n';
 
 				// Leave function scope
-				if (!this.popScope())
+				if (!this.generateNodePassCodeLeaveScope())
 					return null;
 
 				// Add return logic, terminating with 'ret' instruction
@@ -196,7 +323,7 @@ export class Generator {
 
 				// Generate code for children
 				for(let i=0; i<node.children.length; ++i) {
-					let childOutput=this.generateNode(node.children[i]);
+					let childOutput=this.generateNodePassCode(node.children[i]);
 					if (childOutput===null)
 						return null;
 					output+=childOutput;
@@ -209,7 +336,7 @@ export class Generator {
 
 				// Generate code for children
 				for(let i=0; i<node.children.length; ++i) {
-					let childOutput=this.generateNode(node.children[i]);
+					let childOutput=this.generateNodePassCode(node.children[i]);
 					if (childOutput===null)
 						return null;
 					output+=childOutput;
@@ -222,7 +349,7 @@ export class Generator {
 
 				// Generate code for children
 				for(let i=0; i<node.children.length; ++i) {
-					let childOutput=this.generateNode(node.children[i]);
+					let childOutput=this.generateNodePassCode(node.children[i]);
 					if (childOutput===null)
 						return null;
 					output+=childOutput;
@@ -245,7 +372,7 @@ export class Generator {
 				let bodyNode=node.children[1];
 
 				// Generate label names to use later
-				let mangledPrefix=this.currentScope.genNewSymbolMangledPrefix()+'_loop';
+				let mangledPrefix=this.currentScope.genNewSymbolMangledPrefix(node.id)+'_loop';
 				let startLabel=this.currentScope.name+mangledPrefix+'start';
 				let endLabel=this.currentScope.name+mangledPrefix+'end';
 
@@ -253,7 +380,7 @@ export class Generator {
 				output+='label '+startLabel+'\n';
 
 				// Condition checking
-				let conditionOutput=this.generateNode(conditionNode);
+				let conditionOutput=this.generateNodePassCode(conditionNode);
 				if (conditionOutput===null)
 					return null;
 				output+=conditionOutput;
@@ -262,12 +389,15 @@ export class Generator {
 				output+='jmp '+endLabel+'\n';
 
 				// Body
-				this.pushScope(mangledPrefix+'body');
-				let bodyOutput=this.generateNode(bodyNode);
+				if (!this.generateNodePassCodeEnterScope(mangledPrefix+'body'))
+					return null;
+
+				let bodyOutput=this.generateNodePassCode(bodyNode);
 				if (bodyOutput===null)
 					return null;
 				output+=bodyOutput;
-				if (!this.popScope())
+
+				if (!this.generateNodePassCodeLeaveScope())
 					return null;
 
 				// Jump back to start and end label
@@ -278,7 +408,7 @@ export class Generator {
 			} break;
 			case AstNodeType.Expression: {
 				// Goal of these Expression cases is to return value of (sub) expression in r0 (if any)
-				return this.generateNode(node.children[0]);
+				return this.generateNodePassCode(node.children[0]);
 			} break;
 			case AstNodeType.ExpressionAssignment: {
 				let output='';
@@ -301,28 +431,27 @@ export class Generator {
 
 				let lhsVariable=lhsSymbol as ScopeVariable;
 
-				// Generate code to calculate RHS value
-				let rhsOutput=this.generateNode(rhsNode);
+				// Calculate RHS value and leave it in r0
+				let rhsOutput=this.generateNodePassCode(rhsNode);
 				if (rhsOutput===null)
 					return null;
 				output+=rhsOutput;
 
-				// Store into LHS variable
-				if (lhsVariable.scope.name=='global') {
-					// Global variable - easy as these have fixed addresses
-					output+='mov r1 '+lhsVariable.mangledName+'\n';
-					if (lhsVariable.totalSize==1)
-						output+='store8 r1 r0\n';
-					else if (lhsVariable.totalSize==2)
-						output+='store16 r1 r0\n';
-					else {
-						// TODO: this
-						this.printError('internal error - unimplemented large-variable logic (assignment)', lhsNode.tokens[0]);
-						return null;
-					}
-				} else {
+				// Place address of variable into r0 (while moving RHS value into r1)
+				output+='push16 r0\n';
+				this.globalStackAdjustment+=2;
+				output+=this.generateVariableAddress(lhsVariable);
+				this.globalStackAdjustment-=2;
+				output+='pop16 r1\n';
+
+				// Store logic (address is in r0, RHS value is in r1)
+				if (lhsVariable.totalSize==1)
+					output+='store8 r0 r1\n';
+				else if (lhsVariable.totalSize==2)
+					output+='store16 r0 r1\n';
+				else {
 					// TODO: this
-					this.printError('internal error - unimplemented automatic variable logic (assignment)', lhsNode.tokens[0]);
+					this.printError('internal error - unimplemented large-variable logic (assignment)', lhsNode.tokens[0]);
 					return null;
 				}
 
@@ -332,15 +461,16 @@ export class Generator {
 				let output='';
 
 				// Generate LHS code and save value onto stack
-				let lhsOutput=this.generateNode(node.children[0]);
+				let lhsOutput=this.generateNodePassCode(node.children[0]);
 				if (lhsOutput===null)
 					return null;
 
 				output+=lhsOutput;
 				output+='push16 r0\n';
+				this.globalStackAdjustment+=2;
 
 				// Generate RHS code and save value into r1
-				let rhsOutput=this.generateNode(node.children[1]);
+				let rhsOutput=this.generateNodePassCode(node.children[1]);
 				if (rhsOutput===null)
 					return null;
 
@@ -348,6 +478,7 @@ export class Generator {
 				output+='mov r1 r0\n';
 
 				// Compare code
+				this.globalStackAdjustment-=2;
 				output+='pop16 r0\n';
 				output+='cmp r1 r0 r1\n';
 				output+='mov r0 1\n';
@@ -366,17 +497,18 @@ export class Generator {
 				let output='';
 
 				// Generate first-operand code and save value onto stack
-				let firstOutput=this.generateNode(node.children[0]);
+				let firstOutput=this.generateNodePassCode(node.children[0]);
 				if (firstOutput===null)
 					return null;
 
 				output+=firstOutput;
 				output+='push16 r0\n';
+				this.globalStackAdjustment+=2;
 
 				// Loop over rest of the operands
 				for(let i=0; i<node.tokens.length; ++i) {
 					// Generate this operands code and place value in r1
-					let loopOutput=this.generateNode(node.children[i+1]);
+					let loopOutput=this.generateNodePassCode(node.children[i+1]);
 					if (loopOutput===null)
 						return null;
 
@@ -384,15 +516,18 @@ export class Generator {
 					output+='mov r1 r0\n';
 
 					// Execute operation
+					this.globalStackAdjustment-=2;
 					output+='pop16 r0\n'; // restore previous operand
 					if (node.tokens[i].text=='+')
 						output+='add r0 r0 r1\n';
 					else if (node.tokens[i].text=='-')
 						output+='sub r0 r0 r1\n';
 					output+='push16 r0\n'; // save result ready to act as next operand
+					this.globalStackAdjustment+=2;
 				}
 
 				// Pop result off stack
+				this.globalStackAdjustment-=2;
 				output+='pop16 r0\n';
 
 				return output;
@@ -401,17 +536,18 @@ export class Generator {
 				let output='';
 
 				// Generate first-operand code and save value onto stack
-				let firstOutput=this.generateNode(node.children[0]);
+				let firstOutput=this.generateNodePassCode(node.children[0]);
 				if (firstOutput===null)
 					return null;
 
 				output+=firstOutput;
 				output+='push16 r0\n';
+				this.globalStackAdjustment+=2;
 
 				// Loop over rest of the operands
 				for(let i=0; i<node.tokens.length; ++i) {
 					// Generate this operands code and place value in r1
-					let loopOutput=this.generateNode(node.children[i+1]);
+					let loopOutput=this.generateNodePassCode(node.children[i+1]);
 					if (loopOutput===null)
 						return null;
 
@@ -419,15 +555,18 @@ export class Generator {
 					output+='mov r1 r0\n';
 
 					// Execute operation
+					this.globalStackAdjustment-=2;
 					output+='pop16 r0\n'; // restore previous operand
 					if (node.tokens[i].text=='*')
 						output+='mul r0 r0 r1\n';
 					else if (node.tokens[i].text=='/')
 						output+='div r0 r0 r1\n';
 					output+='push16 r0\n'; // save result ready to act as next operand
+					this.globalStackAdjustment+=2;
 				}
 
 				// Pop result off stack
+				this.globalStackAdjustment-=2;
 				output+='pop16 r0\n';
 
 				return output;
@@ -446,27 +585,23 @@ export class Generator {
 					if (terminalSymbol!==null) {
 						if (terminalSymbol instanceof ScopeVariable) {
 							let terminalVariable=terminalSymbol as ScopeVariable;
-							if (terminalVariable.scope.name=='global') {
-								// Global variables (easy due to having a fixed address)
-								let output='';
-								output+='mov r0 '+terminalVariable.mangledName+'\n';
-								if (terminalVariable.totalSize==1)
-									output+='load8 r0 r0\n';
-								else if (terminalVariable.totalSize==2)
-									output+='load16 r0 r0\n';
-								else {
-									// TODO: this
-									this.printError('internal error - unimplemented large-variable logic (expression terminal)', node.tokens[0]);
-									return null;
-								}
+							let output='';
 
-								return output;
-							} else {
-								// Automatic variables
+							// Place address of variable into r0
+							output+=this.generateVariableAddress(terminalVariable);
+
+							// Load logic (address is in r0 from previous step)
+							if (terminalVariable.totalSize==1)
+								output+='load8 r0 r0\n';
+							else if (terminalVariable.totalSize==2)
+								output+='load16 r0 r0\n';
+							else {
 								// TODO: this
-								this.printError('internal error - unimplemented automatic variable logic (expression terminal)', node.tokens[0]);
+								this.printError('internal error - unimplemented large-variable logic (expression terminal)', node.tokens[0]);
 								return null;
 							}
+
+							return output;
 						} else if (terminalSymbol instanceof ScopeFunction) {
 							this.printError('cannot use function symbol \''+terminalSymbol.name+'\' as a value', node.tokens[0]);
 							return null;
@@ -487,6 +622,30 @@ export class Generator {
 
 		this.printError('unexpected/unhandled node of type '+AstNodeType[node.type], null); // TODO: can we find most relevant token to pass?
 		return null;
+	}
+
+	// This returns a string containing asm code which will move the address of the given variable into r0
+	public generateVariableAddress(variable: ScopeVariable):string {
+		let output='';
+
+		if (variable.scope.name=='global') {
+			// Global variable (easy due to having a fixed address)
+			output+='mov r0 '+variable.mangledName+'\n';
+		} else {
+			// Automatic variable
+			let stackAdjustment=this.globalStackAdjustment+variable.getStackAdjustment();
+			if (stackAdjustment==0)
+				output+='mov r0 r6\n';
+			else if (stackAdjustment<=64) {
+				output+='mov r0 r6\n';
+				output+='dec'+stackAdjustment+' r0\n';
+			} else {
+				output+='mov r0 '+stackAdjustment+'\n';
+				output+='sub r0 r6 r0\n';
+			}
+		}
+
+		return output;
 	}
 
 	public static escapeName(input: string):string {
@@ -514,13 +673,34 @@ export class Generator {
 			console.log('Could not generate code: '+message);
 	}
 
-	private pushScope(name: string) {
+	private generateNodePassScopesPushScope(name: string) {
 		this.currentScope=this.currentScope.push(name);
 	}
 
-	private popScope():boolean {
+	private generateNodePassScopesPopScope():boolean {
 		if (this.currentScope.parent===null) {
 			this.printError('internal error - tried to pop scope but already in global scope', null);
+			return false;
+		}
+
+		this.currentScope=this.currentScope.parent;
+		return true;
+	}
+
+	private generateNodePassCodeEnterScope(name: string):boolean {
+		for(let i=0; i<this.currentScope.children.length; ++i)
+			if (this.currentScope.children[i].name==this.currentScope.name+name) {
+				this.currentScope=this.currentScope.children[i];
+				return true;
+			}
+
+		this.printError('internal error - tried to enter scope \''+this.currentScope.name+name+'\' but no such scope found', null);
+		return false;
+	}
+
+	private generateNodePassCodeLeaveScope():boolean {
+		if (this.currentScope.parent===null) {
+			this.printError('internal error - tried to leave scope but already in global scope', null);
 			return false;
 		}
 

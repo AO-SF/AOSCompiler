@@ -71,8 +71,6 @@ export class ScopeFunction extends ScopeSymbol {
 export class Scope {
 	public static separator='__';
 
-	private nextSubLabelId=0;
-
 	public symbols: ScopeSymbol[] = [];
 	public children: Scope[] = [];
 
@@ -116,12 +114,12 @@ export class Scope {
 		return this.parent.getFunctionMangledName();
 	}
 
-	public genNewSymbolMangledName():string {
-		return this.name+this.genNewSymbolMangledPrefix();
+	public genNewSymbolMangledName(id:number):string {
+		return this.name+this.genNewSymbolMangledPrefix(id);
 	}
 
-	public genNewSymbolMangledPrefix():string {
-		return Scope.separator+(this.nextSubLabelId++);
+	public genNewSymbolMangledPrefix(id:number):string {
+		return Scope.separator+id;
 	}
 
 	public getSymbolByName(name:string ):null | ScopeSymbol {
@@ -137,15 +135,15 @@ export class Scope {
 		return null;
 	}
 
-	public addVariable(name:string, type:string, totalSize:number, definitionToken:Token):ScopeVariable {
-		let mangledName=this.genNewSymbolMangledName()+'_variable_'+Generator.escapeName(name);
+	public addVariable(name:string, id:number, type:string, totalSize:number, definitionToken:Token):ScopeVariable {
+		let mangledName=this.genNewSymbolMangledName(id)+'_variable_'+Generator.escapeName(name);
 		let variable=new ScopeVariable(this, name, mangledName, definitionToken, type, totalSize);
 		this.symbols.push(variable);
 		return variable;
 	}
 
-	public addfunction(name:string, definitionToken:Token):ScopeFunction {
-		let mangledName=this.genNewSymbolMangledName()+'_function_'+Generator.escapeName(name);
+	public addfunction(name:string, id:number, definitionToken:Token):ScopeFunction {
+		let mangledName=this.genNewSymbolMangledName(id)+'_function_'+Generator.escapeName(name);
 		let func=new ScopeFunction(this, name, mangledName, definitionToken);
 		this.symbols.push(func);
 		return func;
