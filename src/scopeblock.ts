@@ -79,15 +79,25 @@ export class Scope {
 		return func;
 	}
 
+	// This function returns total number of bytes required to store all local variables in this scope but NOT any from descendant scopes
+	public getLocalVariableSizeAllocation():number {
+		let total=0;
+
+		// Sum size of all variables allocated directly within this scope (not within children)
+		for(let i=0; i<this.symbols.length; ++i) {
+			if (this.symbols[i] instanceof ScopeVariable)
+				total+=(this.symbols[i] as ScopeVariable).totalSize;
+		}
+
+		return total;
+	}
+
 	// This function returns total number of bytes required to store all local variables in this scope and all descendant scopes
 	public getTotalVariableSizeAllocation():number {
 		let total=0;
 
 		// First sum size of all variables allocated directly within this scope (not within children)
-		for(let i=0; i<this.symbols.length; ++i) {
-			if (this.symbols[i] instanceof ScopeVariable)
-				total+=(this.symbols[i] as ScopeVariable).totalSize;
-		}
+		total+=this.getLocalVariableSizeAllocation();
 
 		// Next find largest child scope and add this to existing total.
 		let largestChildAllocation=0;
