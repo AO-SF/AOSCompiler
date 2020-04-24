@@ -33,9 +33,22 @@ export class Tokenizer {
 					let c2=input[i+1];
 					text+=c2;
 					++i;
-					if (c2=='"')
+					if (c2=='\\') {
+						++i;
+						if (i>=input.length) {
+							console.log("Could not tokenize: unterminated string (file '"+file+"', line "+lineNum+", column "+columnNum+")");
+							return null;
+						}
+						text+=input[i];
+					} else if (c2=='"')
 						break;
 				}
+
+				if (text.length<2 || text[0]!='"' || text[text.length-1]!='"') {
+					console.log("Could not tokenize: unterminated string (file '"+file+"', line "+lineNum+", column "+columnNum+")");
+					return null;
+				}
+
 				tokens.push(new Token(text, new TokenLocation(file, lineNum, columnNum)));
 
 				continue;
