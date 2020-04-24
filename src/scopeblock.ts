@@ -79,6 +79,13 @@ export class Scope {
 	public constructor(public name:string, public parent:null|Scope) {
 	}
 
+	public push(name: string):Scope {
+		name=this.name+name;
+		let scope=new Scope(name, this);
+		this.children.push(scope);
+		return scope;
+	}
+
 	public getFunctionScope():null|Scope {
 		// Global scope has no function
 		if (this.parent===null)
@@ -92,6 +99,23 @@ export class Scope {
 		return this.parent.getFunctionScope();
 	}
 
+	// If we are the global scope, returns null.
+	// Otherwise this returns the mangled name for whichever function this scope either is or is descendant from.
+	public getFunctionMangledName():null | string {
+		// HACK: this assumes the 2nd scope in the tree is always a function, may not always be true in the future
+
+		// Global scope?
+		if (this.parent===null)
+			return null;
+
+		// Fnuction scope itself?
+		if (this.parent.parent===null)
+			return this.name;
+
+		// Otherwise recursively try parent to see if it is the function scope
+		return this.parent.getFunctionMangledName();
+	}
+
 	public genNewSymbolMangledName():string {
 		return this.name+this.genNewSymbolMangledPrefix();
 	}
@@ -101,9 +125,15 @@ export class Scope {
 	}
 
 	public getSymbolByName(name:string ):null | ScopeSymbol {
+		// Check within this scope
 		for(let i=0; i<this.symbols.length; ++i)
 			if (this.symbols[i].name==name)
 				return this.symbols[i];
+
+		// Check within parent scope recursively (if any parent)
+		if (this.parent!==null)
+			return this.parent.getSymbolByName(name);
+
 		return null;
 	}
 
@@ -189,57 +219,5 @@ export class Scope {
 		// Recurse to debug child scopes
 		for(let i=0; i<this.children.length; ++i)
 			this.children[i].debug(indentation+2);
-	}
-}
-
-export class ScopeStack {
-	private scopes: Scope[] = [];
-
-	public constructor() {
-	}
-
-	public peek():null | Scope {
-		return (this.scopes.length>0 ? this.scopes[this.scopes.length-1] : null);
-	}
-
-	public push(name: string):Scope {
-		let parentScope=this.peek();
-		if (parentScope!==null)
-				name=parentScope.name+name;
-		let scope=new Scope(name, parentScope);
-		this.scopes.push(scope);
-		if (parentScope!==null)
-			parentScope.children.push(scope);
-		return scope;
-	}
-
-	public pop() {
-		this.scopes.pop();
-	}
-
-	public getSymbolByName(name: string):null | ScopeSymbol {
-		for(let i=0; i<this.scopes.length; ++i) {
-			let symbol=this.scopes[i].getSymbolByName(name);
-			if (symbol!==null)
-				return symbol;
-		}
-		return null;
-	}
-
-	// If scopes is empty or contains only the global scope, this returns null.
-	// Otherwise this returns the mangled name for whichever function this scope either is or is descendant from.
-	public getFunctionMangledName():null | string {
-		// HACK: this assumes the 2nd scope in the list is always a function, may not always be true in the future
-
-		if (this.scopes.length<2)
-			return null;
-
-		return this.scopes[1].name;
-	}
-
-	public debug() {
-		console.log('Scope Stack:');
-		if (this.scopes.length>0)
-			this.scopes[0].debug(2);
 	}
 }

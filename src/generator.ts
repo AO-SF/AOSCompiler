@@ -1,10 +1,11 @@
 import { AstNode, AstNodeType } from './ast';
 import { Parser } from './parser';
-import { Scope, ScopeSymbol, ScopeVariable, ScopeFunction, ScopeStack } from './scopeblock';
+import { Scope, ScopeSymbol, ScopeVariable, ScopeFunction } from './scopeblock';
 import { Token } from './tokenizer';
 
 export class Generator {
-	private scopeStack: ScopeStack = new ScopeStack();
+	private globalScope: Scope = new Scope('global', null);
+	private currentScope: Scope;
 
 	public constructor() {
 	}
@@ -15,7 +16,9 @@ export class Generator {
 			return null;
 
 		// Reset state
-		this.scopeStack=new ScopeStack();
+		this.globalScope=new Scope('global', null);
+		this.currentScope=this.globalScope;
+		this.globalStackAdjustment=0;
 
 		// Generate from given AST
 		return this.generateNode(rootNode);
@@ -24,9 +27,6 @@ export class Generator {
 	private generateNode(node: AstNode):null | string {
 		switch(node.type) {
 			case AstNodeType.Root: {
-				// Create global scope
-				this.scopeStack.push('global');
-
 				// Require includes
 				let outputIncludes='';
 				outputIncludes+='; Includes\n';
@@ -47,7 +47,7 @@ export class Generator {
 				// TODO: prepare argc and argv
 				let outputStart='';
 				outputStart+='; Call main and handle exit code once returns\n';
-				let mainFunction=this.scopeStack.getSymbolByName('main');
+				let mainFunction=this.currentScope.getSymbolByName('main');
 				if (mainFunction===null || !(mainFunction instanceof ScopeFunction)) {
 					this.printError('missing \'main\' function', null);
 					return null;
@@ -62,8 +62,8 @@ export class Generator {
 				// Generate code for global variables (has to be done after generating code from children, so that the global scope is populated)
 				let outputGlobals='';
 
-				for(let i=0; i<this.scopeStack.peek()!.symbols.length; ++i) {
-					let variable=this.scopeStack.peek()!.symbols[i];
+				for(let i=0; i<this.currentScope.symbols.length; ++i) {
+					let variable=this.currentScope.symbols[i];
 					if (!(variable instanceof ScopeVariable))
 						continue;
 
@@ -82,9 +82,6 @@ export class Generator {
 				output+=outputStart;
 				output+=outputCode;
 
-				// Pop scope
-				this.scopeStack.pop();
-
 				return output;
 			} break;
 			case AstNodeType.Definition:
@@ -100,7 +97,7 @@ export class Generator {
 				let name=nameNode.tokens[0].text;
 
 				// See if name already defined (in current scope or any ones above)
-				let previouslyDefined=this.scopeStack.getSymbolByName(name);
+				let previouslyDefined=this.currentScope.getSymbolByName(name);
 				if (previouslyDefined!==null) {
 					this.printError('cannot redefine symbol \''+name+'\' as variable (previously defined at '+previouslyDefined.definitionToken.location.toString()+')', nameNode.tokens[0]);
 					return null;
@@ -117,7 +114,7 @@ export class Generator {
 				let varTotalSize=varEntrySize*varEntryCount;
 
 				// Define this name by adding it to list of variables in this scope
-				this.scopeStack.peek()!.addVariable(name, type, varTotalSize, nameNode.tokens[0]);
+				this.currentScope.addVariable(name, type, varTotalSize, nameNode.tokens[0]);
 
 				// Note: neither global nor automatic variables need any actual code generating here
 				// (globals are created by Root node code, and automatic variables are created by FunctionDefinition node code)
@@ -137,24 +134,24 @@ export class Generator {
 				let typeNode=nameTypeNode.children[1];
 
 				// Check if symbol with same name already defined previously
-				let previouslyDefined=this.scopeStack.getSymbolByName(name);
+				let previouslyDefined=this.currentScope.getSymbolByName(name);
 				if (previouslyDefined!==null) {
 					this.printError('cannot redefine symbol \''+name+'\' as function (previously defined at '+previouslyDefined.definitionToken.location.toString()+')', nameNode.tokens[0]);
 					return null;
 				}
 
 				// Add function to current scope
-				let func=this.scopeStack.peek()!.addfunction(name, nameNode.tokens[0]);
+				let func=this.currentScope.addfunction(name, nameNode.tokens[0]);
 
 				// Enter function scope
-				this.scopeStack.push(func.getScopeName());
+				this.pushScope(func.getScopeName());
 
 				// Generate code for function body from child Block node
 				let outputBody=this.generateNode(bodyNode);
 				if (outputBody===null)
 					return null;
 
-				let variableAllocationSize=this.scopeStack.peek()!.getTotalVariableSizeAllocation(); // we have to generate body code before calling this
+				let variableAllocationSize=this.currentScope.getTotalVariableSizeAllocation(); // we have to generate body code before calling this
 
 				// Generate code for function start
 				let outputStart='';
@@ -167,7 +164,8 @@ export class Generator {
 					outputStart+='inc'+variableAllocationSize+' r6\n';
 
 				// Leave function scope
-				this.scopeStack.pop();
+				if (!this.popScope())
+					return null;
 
 				// Add return logic, terminating with 'ret' instruction
 				// All 'return' statements within this function will cause flow to jump to this label, with r0 set to return value (if any).
@@ -231,7 +229,7 @@ export class Generator {
 				}
 
 				// Jump to function end label to return
-				let funcMangledName=this.scopeStack.getFunctionMangledName();
+				let funcMangledName=this.currentScope.getFunctionMangledName();
 				if (funcMangledName===null) {
 					this.printError('\'return\' statement not in function scope', node.tokens[0]);
 					return null;
@@ -247,9 +245,9 @@ export class Generator {
 				let bodyNode=node.children[1];
 
 				// Generate label names to use later
-				let mangledPrefix=this.scopeStack.peek()!.genNewSymbolMangledPrefix()+'_loop';
-				let startLabel=this.scopeStack.peek()!.name+mangledPrefix+'start';
-				let endLabel=this.scopeStack.peek()!.name+mangledPrefix+'end';
+				let mangledPrefix=this.currentScope.genNewSymbolMangledPrefix()+'_loop';
+				let startLabel=this.currentScope.name+mangledPrefix+'start';
+				let endLabel=this.currentScope.name+mangledPrefix+'end';
 
 				// Start label
 				output+='label '+startLabel+'\n';
@@ -264,12 +262,13 @@ export class Generator {
 				output+='jmp '+endLabel+'\n';
 
 				// Body
-				this.scopeStack.push(mangledPrefix+'body');
+				this.pushScope(mangledPrefix+'body');
 				let bodyOutput=this.generateNode(bodyNode);
 				if (bodyOutput===null)
 					return null;
 				output+=bodyOutput;
-				this.scopeStack.pop();
+				if (!this.popScope())
+					return null;
 
 				// Jump back to start and end label
 				output+='jmp '+startLabel+'\n';
@@ -289,7 +288,7 @@ export class Generator {
 
 				// Is the LHS even a registered variable?
 				let name=lhsNode.tokens[0].text;
-				let lhsSymbol=this.scopeStack.getSymbolByName(name);
+				let lhsSymbol=this.currentScope.getSymbolByName(name);
 				if (lhsSymbol===null) {
 					this.printError('undefined symbol \''+name+'\' as destination in assignment', lhsNode.tokens[0]);
 					return null;
@@ -443,7 +442,7 @@ export class Generator {
 						return 'mov r0 '+terminalStr+'\n';
 
 					// Terminal is symbol name?
-					let terminalSymbol=this.scopeStack.getSymbolByName(terminalStr);
+					let terminalSymbol=this.currentScope.getSymbolByName(terminalStr);
 					if (terminalSymbol!==null) {
 						if (terminalSymbol instanceof ScopeVariable) {
 							let terminalVariable=terminalSymbol as ScopeVariable;
@@ -513,5 +512,19 @@ export class Generator {
 			console.log('Could not generate code ('+token.location.toString()+'): '+message);
 		else
 			console.log('Could not generate code: '+message);
+	}
+
+	private pushScope(name: string) {
+		this.currentScope=this.currentScope.push(name);
+	}
+
+	private popScope():boolean {
+		if (this.currentScope.parent===null) {
+			this.printError('internal error - tried to pop scope but already in global scope', null);
+			return false;
+		}
+
+		this.currentScope=this.currentScope.parent;
+		return true;
 	}
 }
