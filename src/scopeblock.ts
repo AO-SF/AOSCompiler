@@ -154,10 +154,26 @@ export class Scope {
 		// This scope must be a sub-scope, and so its variables will be placed after all variables in the parent scope.
 		return this.parent.getStackOffset()+this.parent.getLocalVariableSizeAllocation();
 	}
-	public debug(identation:number=0) {
-		console.log(' '.repeat(identation)+this.name);
+
+	public debug(indentation:number=0) {
+		// Print string for this scope
+		let str=' '.repeat(indentation)+this.name;
+
+		if (this.parent!==null) {
+			// Non-global scopes
+			str+=' (';
+			if (this.parent.parent!=null)
+				// Non-function scopes
+				str+='stackOffset='+this.getStackOffset()+', ';
+			str+='stackAllocation='+this.getTotalVariableSizeAllocation();
+			str+=')';
+		}
+
+		console.log(str);
+
+		// Recurse to debug child scopes
 		for(let i=0; i<this.children.length; ++i)
-			this.children[i].debug(identation+2);
+			this.children[i].debug(indentation+2);
 	}
 }
 
