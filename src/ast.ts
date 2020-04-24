@@ -12,6 +12,7 @@ export enum AstNodeType {
 	Statement,
 	StatementReturn,
 	StatementWhile,
+	StatementInlineAsm,
 	Expression,
 	ExpressionAssignment,
 	ExpressionInequality,
@@ -19,6 +20,7 @@ export enum AstNodeType {
 	ExpressionMultiplication,
 	ExpressionTerminal,
 	ExpressionBrackets,
+	QuotedString,
 };
 
 export class AstNode {

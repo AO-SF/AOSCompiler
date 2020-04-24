@@ -178,6 +178,15 @@ export class Parser {
 						continue;
 					}
 
+					// Inline asm statement?
+					if (token.text=='asm') {
+						this.nodeStackPush(AstNodeType.StatementInlineAsm);
+
+						input.unshift(token);
+
+						continue;
+					}
+
 					// While statement?
 					if (token.text=='while') {
 						currNode=this.nodeStackPush(AstNodeType.StatementWhile);
@@ -249,6 +258,26 @@ export class Parser {
 					// Closing curly to terminate body?
 					if (token.text=='}') {
 						this.nodeStackPop();
+
+						continue;
+					}
+				break;
+				case AstNodeType.StatementInlineAsm:
+					// 'asm' keyword to start statement?
+					if (currNode.tokens.length==0 && token.text=='asm') {
+						// Add token for better error reporting later
+						currNode.tokens.push(token);
+
+						this.nodeStackPush(AstNodeType.QuotedString);
+
+						continue;
+					}
+
+					// Semicolon to terminate statement?
+					if (token.text==';') {
+						this.nodeStackPop();
+
+						input.unshift(token);
 
 						continue;
 					}
@@ -373,6 +402,15 @@ export class Parser {
 						continue;
 					}
 				break;
+				case AstNodeType.QuotedString:
+					if (token.text.length>=2 && token.text.substring(0,1)=='"' && token.text.substring(token.text.length-1)=='"') {
+						currNode.tokens.push(token);
+
+						this.nodeStackPop();
+
+						continue;
+					}
+				break;
 			}
 
 			// Bad sequence of tokens
@@ -435,6 +473,8 @@ export class Parser {
 			break;
 			case AstNodeType.StatementWhile:
 			break;
+			case AstNodeType.StatementInlineAsm:
+			break;
 			case AstNodeType.Expression:
 				this.nodeStackPushHelper(node, AstNodeType.ExpressionAssignment);
 			break;
@@ -455,6 +495,8 @@ export class Parser {
 			case AstNodeType.ExpressionBrackets:
 				this.nodeStackPushHelper(node, AstNodeType.ExpressionAssignment);
 			break;
+			case AstNodeType.QuotedString:
+			break;
 		}
 
 		return node;
@@ -471,7 +513,7 @@ export class Parser {
 	}
 
 	public static strIsKeyword(str: string):boolean {
-		if (str=='return' || str=='if' || str=='while')
+		if (str=='return' || str=='asm' || str=='while')
 			return true;
 		return false;
 	}

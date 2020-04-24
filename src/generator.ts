@@ -153,6 +153,7 @@ export class Generator {
 
 				return true;
 			} break;
+			case AstNodeType.StatementInlineAsm:
 			case AstNodeType.Expression:
 			case AstNodeType.ExpressionAssignment:
 			case AstNodeType.ExpressionInequality:
@@ -160,6 +161,7 @@ export class Generator {
 			case AstNodeType.ExpressionMultiplication:
 			case AstNodeType.ExpressionTerminal:
 			case AstNodeType.ExpressionBrackets:
+			case AstNodeType.QuotedString:
 				return true;
 			break;
 		}
@@ -406,6 +408,11 @@ export class Generator {
 
 				return output;
 			} break;
+			case AstNodeType.StatementInlineAsm: {
+				let quotedStringNode=node.children[0];
+
+				return this.parseQuotedString(quotedStringNode.tokens[0].text, quotedStringNode.tokens[0])+'\n';
+			} break;
 			case AstNodeType.Expression: {
 				// Goal of these Expression cases is to return value of (sub) expression in r0 (if any)
 				return this.generateNodePassCode(node.children[0]);
@@ -618,6 +625,8 @@ export class Generator {
 			} break;
 			case AstNodeType.ExpressionBrackets: {
 			} break;
+			case AstNodeType.QuotedString: {
+			} break;
 		}
 
 		this.printError('unexpected/unhandled node of type '+AstNodeType[node.type], null); // TODO: can we find most relevant token to pass?
@@ -706,5 +715,57 @@ export class Generator {
 
 		this.currentScope=this.currentScope.parent;
 		return true;
+	}
+
+	private parseQuotedString(input: string, token:null|Token):null|string {
+		// Ensure first character is a quote and strip it off.
+		if (input.length<1 || input[0]!='"') {
+			this.printError('bad quoted string - no open quote', token);
+			return null;
+		}
+
+		input=input.substring(1);
+
+		// Ensure last character is also a quote and strip it off.
+		if (input.length<1 || input[input.length-1]!='"') {
+			this.printError('bad quoted string - no close quote', token);
+			return null;
+		}
+
+		input=input.substring(0,input.length-1);
+
+		// Unescape
+		let output='';
+		for(let i=0; i<input.length; ++i) {
+			if (input[i]!='\\') {
+				output+=input[i];
+				continue;
+			}
+
+			++i;
+
+			if (i>=input.length) {
+				this.printError('bad quoted string - trailing escape character', token);
+				return null;
+			}
+
+			switch(input[i]) {
+				case 'n':
+					output+='\n';
+				break;
+				case '"':
+					output+='"';
+				break;
+				case '\\':
+					output+='\\';
+				break;
+				default:
+					this.printError('bad quoted string - bad escape sequence \'\\'+input[i]+'\'', token);
+					return null;
+				break;
+			}
+		}
+
+		return output;
 	}
 }
