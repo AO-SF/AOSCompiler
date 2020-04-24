@@ -28,15 +28,20 @@ export class Tokenizer {
 			// Start of quoted string?
 			if (sub.startsWith('"')) {
 				// Consume entire string up to end quote or end of file
+				let stringStartLineNum=lineNum;
+				let stringStartColumnNum=columnNum;
 				let text=c;
 				while(i+1<input.length) {
 					let c2=input[i+1];
 					text+=c2;
 					++i;
-					if (c2=='\\') {
+					if (c2=='\n') {
+						++lineNum;
+						lineStartOffset=i+1;
+					} else if (c2=='\\') {
 						++i;
 						if (i>=input.length) {
-							console.log("Could not tokenize: unterminated string (file '"+file+"', line "+lineNum+", column "+columnNum+")");
+							console.log("Could not tokenize: unterminated string (file '"+file+"', line "+stringStartLineNum+", column "+stringStartColumnNum+")");
 							return null;
 						}
 						text+=input[i];
@@ -45,7 +50,7 @@ export class Tokenizer {
 				}
 
 				if (text.length<2 || text[0]!='"' || text[text.length-1]!='"') {
-					console.log("Could not tokenize: unterminated string (file '"+file+"', line "+lineNum+", column "+columnNum+")");
+					console.log("Could not tokenize: unterminated string (file '"+file+"', line "+stringStartLineNum+", column "+stringStartColumnNum+")");
 					return null;
 				}
 
@@ -59,7 +64,10 @@ export class Tokenizer {
 				// Consume entire comment up to closing marker or end of file
 				while(i+1<input.length) {
 					let sub2=input.substr(i+1);
-					if (sub2.startsWith('*/')) {
+					if (sub2.startsWith('\n')) {
+						++lineNum;
+						lineStartOffset=i+1;
+					} else if (sub2.startsWith('*/')) {
 						i+=2;
 						break;
 					}
