@@ -1,5 +1,5 @@
 // Most basic valid program
 
-uint16_t main(uint16_t argc, uint8_t **argv) {
+uint16_t main() {
 	return 0;
 }
