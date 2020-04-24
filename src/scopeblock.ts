@@ -4,6 +4,10 @@ import { Token } from './tokenizer';
 export class ScopeSymbol {
 	public constructor(public scope: Scope, public name:string, public mangledName:string, public definitionToken: Token) {
 	}
+
+	public getFunctionScope():null|Scope {
+		return this.scope.getFunctionScope();
+	}
 }
 
 export class ScopeVariable extends ScopeSymbol {
@@ -31,6 +35,19 @@ export class Scope {
 	public children: Scope[] = [];
 
 	public constructor(public name:string, public parent:null|Scope) {
+	}
+
+	public getFunctionScope():null|Scope {
+		// Global scope has no function
+		if (this.parent===null)
+			return null;
+
+		// Is this a function scope directly?
+		if (this.parent.parent===null)
+			return this;
+
+		// Walk up tree until find function ancestor
+		return this.parent.getFunctionScope();
 	}
 
 	public genNewSymbolMangledName():string {
