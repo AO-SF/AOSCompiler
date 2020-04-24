@@ -41,6 +41,21 @@ export class ScopeVariable extends ScopeSymbol {
 
 		return scopeOffset+localOffset;
 	}
+
+	// For global variables, returns 0.
+	// For automatic variables, returns how much the stack pointer should be decreased by to find the storage for this variable.
+	// Assumes the stack is as it was after starting the function (so already incremented by total stack allocation for the function, but no more).
+	public getStackAdjustment():number {
+		// Grab relevant function scope (or return if global)
+		let functionScope=this.getFunctionScope();
+		if (functionScope===null)
+			return 0;
+
+		// Take total stack allocation and subtract offset of this variable.
+		let stackAllocation=functionScope.getTotalVariableSizeAllocation();
+		let stackOffset=this.getStackOffset();
+		return stackAllocation-stackOffset;
+	}
 }
 
 export class ScopeFunction extends ScopeSymbol {
