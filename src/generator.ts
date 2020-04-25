@@ -627,7 +627,35 @@ export class Generator {
 			case AstNodeType.ExpressionBrackets: {
 			} break;
 			case AstNodeType.ExpressionCall: {
-				// TODO: this
+				let output ='';
+
+				let funcName=node.tokens[0].text;
+
+				// Lookup symbol in scope
+				let symbol=this.currentScope.getSymbolByName(funcName);
+				if (symbol===null) {
+					this.printError('bad function call - no such symbol \''+funcName+'\'', node.tokens[0]);
+					return null;
+				}
+
+				if (!(symbol instanceof ScopeFunction)) {
+					this.printError('bad function call - symbol \''+funcName+'\' is not a function', node.tokens[0]);
+					return null;
+				}
+
+				let func=symbol as ScopeFunction;
+
+				// Handle arguments
+				if (node.children.length>0) {
+					// TODO: this
+					this.printError('bad function call - arguments not yet supported', node.tokens[0]);
+					return null;
+				}
+
+				// Add call instruction
+				output+='call '+func.mangledName+'\n';
+
+				return output;
 			} break;
 			case AstNodeType.QuotedString: {
 			} break;
