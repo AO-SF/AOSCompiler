@@ -97,6 +97,10 @@ export class Generator {
 				// Enter function scope
 				this.generateNodePassScopesPushScope(func.getScopeName());
 
+				// Pass to register any arguments
+				if (argumentsNode!==null && !this.generateNodePassScopes(argumentsNode))
+					return false;
+
 				// Pass for children in body
 				if (!this.generateNodePassScopes(bodyNode))
 					return false;
@@ -108,6 +112,27 @@ export class Generator {
 				return true;
 			} break;
 			case AstNodeType.FunctionDefinitionArguments: {
+				for(let i=0; i<node.children.length; ++i) {
+					let variableDefinitionNode=node.children[i];
+					let argumentNameNode=variableDefinitionNode.children[0];
+					let argumentTypeNode=variableDefinitionNode.children[1];
+
+					// Grab argument's name and type
+					let argumentName=argumentNameNode.tokens[0].text;
+					let argumentType='';
+					for(let i=0; i<argumentTypeNode.tokens.length; ++i)
+						argumentType+=argumentTypeNode.tokens[i].text;
+
+					// Determine size of variable in memory based on type
+					let argumentEntrySize=this.typeToSize(argumentType);
+					let argumentEntryCount=1;
+					let argumentTotalSize=argumentEntrySize*argumentEntryCount;
+
+					// Add argument to current (function) scope
+					this.currentScope.addArgument(argumentName, variableDefinitionNode.id, argumentNameNode.tokens[0], argumentType, argumentTotalSize);
+				}
+
+				return true;
 			} break;
 			case AstNodeType.Block: {
 				// Pass for children
