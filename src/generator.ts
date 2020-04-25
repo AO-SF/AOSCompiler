@@ -101,8 +101,6 @@ export class Generator {
 				if (!this.generateNodePassScopes(bodyNode))
 					return false;
 
-				let variableAllocationSize=this.currentScope.getTotalVariableSizeAllocation(); // we have to generate body code before calling this
-
 				// Leave function scope
 				if (!this.generateNodePassScopesPopScope())
 					return false;
