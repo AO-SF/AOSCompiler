@@ -142,7 +142,7 @@ export class Scope {
 		return variable;
 	}
 
-	public addfunction(name:string, id:number, definitionToken:Token):ScopeFunction {
+	public addFunction(name:string, id:number, definitionToken:Token):ScopeFunction {
 		let mangledName=this.genNewSymbolMangledName(id)+'_function_'+Generator.escapeName(name);
 		let func=new ScopeFunction(this, name, mangledName, definitionToken);
 		this.symbols.push(func);

@@ -92,7 +92,7 @@ export class Generator {
 				}
 
 				// Add function to current scope
-				let func=this.currentScope.addfunction(name, node.id, nameNode.tokens[0]);
+				let func=this.currentScope.addFunction(name, node.id, nameNode.tokens[0]);
 
 				// Enter function scope
 				this.generateNodePassScopesPushScope(func.getScopeName());
