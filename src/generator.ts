@@ -625,7 +625,7 @@ export class Generator {
 			case AstNodeType.ExpressionBrackets: {
 			} break;
 			case AstNodeType.ExpressionCall: {
-				let output ='';
+				let output = '';
 
 				let funcName=node.tokens[0].text;
 
