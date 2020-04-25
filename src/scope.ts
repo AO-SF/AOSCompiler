@@ -141,7 +141,7 @@ export class Scope {
 		return null;
 	}
 
-	public addVariable(name:string, id:number, type:string, totalSize:number, definitionToken:Token):ScopeVariable {
+	public addVariable(name:string, id:number, definitionToken:Token, type:string, totalSize:number):ScopeVariable {
 		let mangledName=this.genNewSymbolMangledName(id)+'_variable_'+Generator.escapeName(name);
 		let variable=new ScopeVariable(this, name, mangledName, definitionToken, type, totalSize);
 		this.symbols.push(variable);

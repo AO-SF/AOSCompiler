@@ -68,7 +68,7 @@ export class Generator {
 				let varTotalSize=varEntrySize*varEntryCount;
 
 				// Define this name by adding it to list of variables in this scope
-				this.currentScope.addVariable(name, node.id, type, varTotalSize, nameNode.tokens[0]);
+				this.currentScope.addVariable(name, node.id, nameNode.tokens[0], type, varTotalSize);
 
 				return true;
 			} break;
