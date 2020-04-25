@@ -161,6 +161,7 @@ export class Generator {
 			case AstNodeType.ExpressionMultiplication:
 			case AstNodeType.ExpressionTerminal:
 			case AstNodeType.ExpressionBrackets:
+			case AstNodeType.ExpressionCall:
 			case AstNodeType.QuotedString:
 				return true;
 			break;
@@ -624,6 +625,9 @@ export class Generator {
 				}
 			} break;
 			case AstNodeType.ExpressionBrackets: {
+			} break;
+			case AstNodeType.ExpressionCall: {
+				// TODO: this
 			} break;
 			case AstNodeType.QuotedString: {
 			} break;

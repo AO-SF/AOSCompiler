@@ -25,6 +25,7 @@ export class Optimizer {
 				case AstNodeType.StatementInlineAsm:
 				case AstNodeType.Expression:
 				case AstNodeType.ExpressionTerminal:
+				case AstNodeType.ExpressionCall:
 				case AstNodeType.QuotedString:
 					// No optimizations available
 				break;

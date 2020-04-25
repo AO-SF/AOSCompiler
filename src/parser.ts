@@ -283,8 +283,8 @@ export class Parser {
 					}
 				break;
 				case AstNodeType.Expression:
-					// Semicolon to terminate statement?
-					if (token.text==';') {
+					// Terminator?
+					if (token.text==')' || token.text==',' || token.text==';') {
 						this.nodeStackPop();
 
 						input.unshift(token);
@@ -303,7 +303,7 @@ export class Parser {
 					}
 
 					// Terminators
-					if (token.text==')' || token.text==';') {
+					if (token.text==')' || token.text==',' || token.text==';') {
 						this.nodeStackPop();
 
 						input.unshift(token);
@@ -322,7 +322,7 @@ export class Parser {
 					}
 
 					// Terminators
-					if (token.text=='=' || token.text==')' || token.text==';') {
+					if (token.text=='=' || token.text==')' || token.text==',' || token.text==';') {
 						this.nodeStackPop();
 
 						input.unshift(token);
@@ -341,7 +341,7 @@ export class Parser {
 					}
 
 					// Terminators
-					if (token.text=='<' || token.text=='<=' || token.text=='>' || token.text=='>=' || token.text=='=' || token.text==')' || token.text==';') {
+					if (token.text=='<' || token.text=='<=' || token.text=='>' || token.text=='>=' || token.text=='=' || token.text==')' || token.text==',' || token.text==';') {
 						this.nodeStackPop();
 
 						input.unshift(token);
@@ -360,7 +360,7 @@ export class Parser {
 					}
 
 					// Terminators
-					if (token.text=='+' || token.text=='-' || token.text=='<' || token.text=='<=' || token.text=='>' || token.text=='>=' || token.text=='=' || token.text==')' || token.text==';') {
+					if (token.text=='+' || token.text=='-' || token.text=='<' || token.text=='<=' || token.text=='>' || token.text=='>=' || token.text=='=' || token.text==')' || token.text==',' || token.text==';') {
 						this.nodeStackPop();
 
 						input.unshift(token);
@@ -369,6 +369,20 @@ export class Parser {
 					}
 				break;
 				case AstNodeType.ExpressionTerminal:
+					// Symbol followed by open parenthesis to indicate function call?
+					if (Parser.strIsSymbol(token.text)) {
+						// Peek at next token
+						if (input.length>0 && input[0].text=='(') {
+							input.shift();
+
+							// Update node
+							currNode.type=AstNodeType.ExpressionCall;
+							currNode.tokens.push(token);
+
+							continue;
+						}
+					}
+
 					// Number or symbol?
 					if (Parser.strIsTerminal(token.text)) {
 						currNode.tokens.push(token);
@@ -401,6 +415,28 @@ export class Parser {
 
 						continue;
 					}
+				break;
+				case AstNodeType.ExpressionCall:
+					// Closing parenthesis to indicate end of argument list?
+					if (token.text==')') {
+						this.nodeStackPop();
+
+						continue;
+					}
+
+					// Comma to indicate next argument?
+					if (token.text==',') {
+						this.nodeStackPush(AstNodeType.Expression);
+
+						continue;
+					}
+
+					// Otherwise must be an expression
+					input.unshift(token);
+
+					this.nodeStackPush(AstNodeType.Expression);
+
+					continue;
 				break;
 				case AstNodeType.QuotedString:
 					if (token.text.length>=2 && token.text.substring(0,1)=='"' && token.text.substring(token.text.length-1)=='"') {
@@ -494,6 +530,8 @@ export class Parser {
 			break;
 			case AstNodeType.ExpressionBrackets:
 				this.nodeStackPushHelper(node, AstNodeType.ExpressionAssignment);
+			break;
+			case AstNodeType.ExpressionCall:
 			break;
 			case AstNodeType.QuotedString:
 			break;

@@ -20,6 +20,7 @@ export enum AstNodeType {
 	ExpressionMultiplication,
 	ExpressionTerminal,
 	ExpressionBrackets,
+	ExpressionCall,
 	QuotedString,
 };
 
