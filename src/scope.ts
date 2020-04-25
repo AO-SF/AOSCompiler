@@ -68,6 +68,12 @@ export class ScopeFunction extends ScopeSymbol {
 	}
 }
 
+export class ScopeArgument extends ScopeSymbol {
+	public constructor(scope: Scope, name:string, mangledName:string, definitionToken: Token, public type:string, public totalSize:number) {
+		super(scope, name, mangledName, definitionToken);
+	}
+}
+
 export class Scope {
 	public static separator='__';
 
@@ -147,6 +153,13 @@ export class Scope {
 		let func=new ScopeFunction(this, name, mangledName, definitionToken);
 		this.symbols.push(func);
 		return func;
+	}
+
+	public addArgument(name:string, id:number, definitionToken:Token, type:string, totalSize:number):ScopeArgument {
+		let mangledName=this.genNewSymbolMangledName(id)+'_argument_'+Generator.escapeName(name);
+		let arg=new ScopeArgument(this, name, mangledName, definitionToken, type, totalSize);
+		this.symbols.push(arg);
+		return arg;
 	}
 
 	// This function returns total number of bytes required to store all local variables in this scope but NOT any from descendant scopes
