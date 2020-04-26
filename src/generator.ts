@@ -736,6 +736,30 @@ export class Generator {
 		return null;
 	}
 
+	// Thin wrapper around generateSymbolAddress
+	public generateSymbolAddressByName(name: string):null|string {
+		let symbol=this.currentScope.getSymbolByName(name);
+		if (symbol===null)
+			return null;
+
+		return this.generateSymbolAddress(symbol);
+	}
+
+	// This returns a string containing asm code which will move the address of the given symbol into r0.
+	// If the symbol is not a variable or an argument then returns null.
+	public generateSymbolAddress(symbol: ScopeSymbol):null|string {
+		// Variable?
+		if (symbol instanceof ScopeVariable)
+			return this.generateVariableAddress(symbol as ScopeVariable);
+
+		// Argument?
+		if (symbol instanceof ScopeArgument)
+			return this.generateArgumentAddress(symbol as ScopeArgument);
+
+		// Otherwise error
+		return null;
+	}
+
 	// This returns a string containing asm code which will move the address of the given variable into r0
 	public generateVariableAddress(variable: ScopeVariable):string {
 		let output='';
@@ -760,6 +784,7 @@ export class Generator {
 		return output;
 	}
 
+	// This returns a string containing asm code which will move the address of the given argument into r0
 	public generateArgumentAddress(argument: ScopeArgument):string {
 		let output='';
 
