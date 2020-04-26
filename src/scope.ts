@@ -90,6 +90,41 @@ export class ScopeArgument extends ScopeSymbol {
 	public constructor(scope: Scope, name:string, mangledName:string, definitionToken: Token, public type:string, public totalSize:number) {
 		super(scope, name, mangledName, definitionToken);
 	}
+
+	// Returns offset of this argument in the stack space allocated to arguments
+	private getStackOffset():number {
+		let offset=0;
+		for(let i=0; i<this.scope.symbols.length; ++i) {
+			if (!(this.scope.symbols[i] instanceof ScopeArgument))
+				continue;
+			let argument=this.scope.symbols[i] as ScopeArgument;
+
+			if (argument.name==this.name)
+				break;
+
+			offset+=argument.totalSize;
+		}
+		return offset;
+	}
+
+	// Returns how much the stack pointer should be decreased by to find the storage for this argument.
+	// Assumes the stack is as it was after starting the function (so already incremented by total stack allocation for the function, but no more).
+	public getStackAdjustment():number {
+		let stackAdjustment=0;
+
+		// Start by adjusting for variables defined within function body
+		stackAdjustment+=this.scope.getTotalVariableSizeAllocation();
+
+		// Adjust by 2 more bytes to skip over return address (added to stack during asm call instruction).
+		stackAdjustment+=2;
+
+		// Adjust by total of argument sizes and then back up based on offset of this particular argument.
+		stackAdjustment+=this.scope.getTotalArgumentSizeAllocation();
+		stackAdjustment-=this.getStackOffset();
+
+		return stackAdjustment;
+	}
+
 }
 
 export class Scope {
