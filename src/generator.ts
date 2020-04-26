@@ -669,14 +669,45 @@ export class Generator {
 				let func=symbol as ScopeFunction;
 
 				// Handle arguments
-				if (node.children.length>0) {
-					// TODO: this
-					this.printError('bad function call - arguments not yet supported', node.tokens[0]);
-					return null;
+				let asmArgumentStackAdjustment=0;
+				for(let i=0; i<node.children.length; ++i) {
+					let expressionCode=this.generateNodePassCode(node.children[i]);
+					if (expressionCode===null)
+						return null;
+					output+=expressionCode;
+
+					let expectedArgument=func.getArgumentN(i)
+					if (expectedArgument===null) {
+						this.printError('bad call to function \''+func.name+'\' - too many arguments', node.children[i].tokens[0]);
+						return null;
+					}
+
+					if (expectedArgument.totalSize==1)
+						output+='push8 r0\n';
+					else if (expectedArgument.totalSize==2)
+						output+='push16 r0\n';
+					else {
+						// TODO: this
+						this.printError('internal error - unimplemented large-variable logic (calling function \''+func.name+'\')', node.children[i].tokens[0]);
+						return null;
+					}
+
+					this.globalStackAdjustment+=expectedArgument.totalSize;
+					asmArgumentStackAdjustment+=expectedArgument.totalSize;
 				}
+
+				this.globalStackAdjustment-=asmArgumentStackAdjustment;
 
 				// Add call instruction
 				output+='call '+func.mangledName+'\n';
+
+				// Add instruction to restore stack after pushing arguments (if any)
+				if (asmArgumentStackAdjustment>64) {
+					output+='mov r1 '+asmArgumentStackAdjustment+'\n';
+					output+='sub r6 r6 r1\n';
+				} else if (asmArgumentStackAdjustment>0) {
+					output+='dec'+asmArgumentStackAdjustment+' r6\n';
+				}
 
 				return output;
 			} break;
