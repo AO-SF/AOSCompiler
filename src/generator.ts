@@ -439,7 +439,7 @@ export class Generator {
 			} break;
 			case AstNodeType.Expression: {
 				// Goal of these Expression cases is to return value of (sub) expression in r0 (if any)
-				return this.generateNodePassCode(node.children[0]);
+				// Although this particular node type is never actually produced by the parser and so we do not need to handle it.
 			} break;
 			case AstNodeType.ExpressionAssignment: {
 				let output='';

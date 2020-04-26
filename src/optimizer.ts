@@ -23,7 +23,6 @@ export class Optimizer {
 				case AstNodeType.StatementReturn:
 				case AstNodeType.StatementWhile:
 				case AstNodeType.StatementInlineAsm:
-				case AstNodeType.Expression:
 				case AstNodeType.ExpressionTerminal:
 				case AstNodeType.ExpressionCall:
 				case AstNodeType.QuotedString:
@@ -37,6 +36,7 @@ export class Optimizer {
 					}
 				break;
 				case AstNodeType.Definition:
+				case AstNodeType.Expression:
 				case AstNodeType.ExpressionBrackets:
 				case AstNodeType.ExpressionAssignment:
 				case AstNodeType.ExpressionInequality:
