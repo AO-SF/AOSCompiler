@@ -66,6 +66,16 @@ export class ScopeFunction extends ScopeSymbol {
 	public getScopeName():string {
 		return this.mangledName.substr(this.scope.name.length);
 	}
+
+	// this.scope is the scope containing this functions definition,
+	// but this function returns the scope representing the body of the function
+	public getBodyScope():null|Scope {
+		for(let i=0; i<this.scope.children.length; ++i) {
+			if (this.scope.children[i].name==this.mangledName)
+				return this.scope.children[i];
+		}
+		return null;
+	}
 }
 
 export class ScopeArgument extends ScopeSymbol {
