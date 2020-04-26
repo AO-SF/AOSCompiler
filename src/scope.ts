@@ -19,7 +19,7 @@ export class ScopeVariable extends ScopeSymbol {
 	// For automatic variables, returns how far into the relevant function's stack storage this variable is.
 	// For example the very first automatic variable defined at the start of a function will return 0,
 	// the next one after it at 2 (assuming first variable is 16 bit).
-	public getStackOffset():number {
+	private getStackOffset():number {
 		// Global variable?
 		// (shouldn't really be used in this way anyway)
 		if (this.scope.name=='global')
