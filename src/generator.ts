@@ -759,6 +759,25 @@ export class Generator {
 				return output;
 			} break;
 			case AstNodeType.QuotedString: {
+				// Parse quoted string from input token
+				let text=this.parseQuotedString(node.tokens[0].text, node.tokens[0]);
+				if (text===null)
+					return null;
+
+				// Escape the text (note that this is a slightly different format to the escaping we removed from the input token)
+				let escapedText=text;
+				escapedText=escapedText.replace('\n', '\\n');
+				escapedText=escapedText.replace('\'', '\\\'');
+
+				// Choose unique global name for this constant
+				let globalName=this.globalScope.genNewSymbolMangledName(node.id)+'_constant';
+
+				// Generate code (simply store string in global variable and place pointer to it in r0)
+				let output='';
+				output+='db '+globalName+' \''+escapedText+'\',0\n';
+				output+='mov r0 '+globalName+'\n';
+
+				return output;
 			} break;
 		}
 

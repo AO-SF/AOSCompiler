@@ -392,6 +392,16 @@ export class Parser {
 						continue;
 					}
 
+					// Quoted string?
+					if (token.text.length>=2 && token.text[0]=='"' && token.text[token.text.length-1]=='"') {
+						currNode.type=AstNodeType.QuotedString;
+						currNode.tokens.push(token);
+
+						this.nodeStackPop();
+
+						continue;
+					}
+
 					// Open parenthesis starting group?
 					if (token.text=='(') {
 						this.nodeStackPush(AstNodeType.ExpressionBrackets);
