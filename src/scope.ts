@@ -212,6 +212,19 @@ export class Scope {
 		return total;
 	}
 
+	// For function scopes (directly), returns total number of bytes required to store all arguments for the function.
+	// Otherwise returns 0.
+	public getTotalArgumentSizeAllocation():number {
+		let total=0;
+
+		for(let i=0; i<this.symbols.length; ++i) {
+			if (this.symbols[i] instanceof ScopeArgument)
+				total+=(this.symbols[i] as ScopeArgument).totalSize;
+		}
+
+		return total;
+	}
+
 	// For root scope and immediate descendants (i.e. functions), returns 0.
 	// For all other scopes, returns how far into the relevant function's stack storage the variables in this scope start.
 	// See ScopeVariable.getStackOffset for more information.
