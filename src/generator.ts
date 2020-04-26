@@ -276,8 +276,6 @@ export class Generator {
 				return '';
 			} break;
 			case AstNodeType.FunctionDefinition: {
-				// TODO: handle FunctionDefinitionArguments
-
 				let nameTypeNode=node.children[0];
 				let argumentsNode=(node.children.length==3 ? node.children[1] : null);
 				let bodyNode=(argumentsNode!==null ? node.children[2] : node.children[1]);
@@ -636,6 +634,25 @@ export class Generator {
 						} else if (terminalSymbol instanceof ScopeFunction) {
 							this.printError('cannot use function symbol \''+terminalSymbol.name+'\' as a value', node.tokens[0]);
 							return null;
+						} else if (terminalSymbol instanceof ScopeArgument) {
+							let terminalArgument=terminalSymbol as ScopeArgument;
+							let output='';
+
+							// Place address of argument into r0
+							output+=this.generateArgumentAddress(terminalArgument);
+
+							// Load logic (address is in r0 from previous step)
+							if (terminalArgument.totalSize==1)
+								output+='load8 r0 r0\n';
+							else if (terminalArgument.totalSize==2)
+								output+='load16 r0 r0\n';
+							else {
+								// TODO: this
+								this.printError('internal error - unimplemented large-argument logic (expression terminal)', node.tokens[0]);
+								return null;
+							}
+
+							return output;
 						} else {
 							this.printError('internal error - unhandled symbol type for \''+terminalSymbol.name+'\' (expression terminal)', node.tokens[0]);
 							return null;
@@ -738,6 +755,23 @@ export class Generator {
 				output+='mov r0 '+stackAdjustment+'\n';
 				output+='sub r0 r6 r0\n';
 			}
+		}
+
+		return output;
+	}
+
+	public generateArgumentAddress(argument: ScopeArgument):string {
+		let output='';
+
+		let stackAdjustment=this.globalStackAdjustment+argument.getStackAdjustment();
+		if (stackAdjustment==0)
+			output+='mov r0 r6\n';
+		else if (stackAdjustment<=64) {
+			output+='mov r0 r6\n';
+			output+='dec'+stackAdjustment+' r0\n';
+		} else {
+			output+='mov r0 '+stackAdjustment+'\n';
+			output+='sub r0 r6 r0\n';
 		}
 
 		return output;
