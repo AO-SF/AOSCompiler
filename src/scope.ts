@@ -76,6 +76,14 @@ export class ScopeFunction extends ScopeSymbol {
 		}
 		return null;
 	}
+
+	// See Scope.getArgumentN for more info
+	public getArgumentN(n:number):null|ScopeArgument {
+		let bodyScope=this.getBodyScope();
+		if (bodyScope===null)
+			return null;
+		return bodyScope.getArgumentN(n);
+	}
 }
 
 export class ScopeArgument extends ScopeSymbol {
@@ -219,6 +227,31 @@ export class Scope {
 
 		// This scope must be a sub-scope, and so its variables will be placed after all variables in the parent scope.
 		return this.parent.getStackOffset()+this.parent.getLocalVariableSizeAllocation();
+	}
+
+	// For root scope returns null.
+	// For other scopes (functions and their descendants) returns nth argument of the function this scope belongs to (or null if n too large)
+	public getArgumentN(n:number):null|ScopeArgument {
+		// Global scope?
+		if (this.parent===null)
+			return null;
+
+		// Not a function scope?
+		if (this.parent.parent!==null)
+			return this.parent.getArgumentN(n);
+
+		// Look through symbols for nth argument
+		for(let i=0; i<this.symbols.length; ++i) {
+			if (!(this.symbols[i] instanceof ScopeArgument))
+				continue;
+
+			if (n==0)
+				return (this.symbols[i] as ScopeArgument);
+
+			--n;
+		}
+
+		return null;
 	}
 
 	public debug(indentation:number=0) {
