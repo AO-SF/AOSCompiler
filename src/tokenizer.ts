@@ -41,7 +41,7 @@ export class Tokenizer {
 					} else if (c2=='\\') {
 						++i;
 						if (i>=input.length) {
-							console.log("Could not tokenize: unterminated string (file '"+file+"', line "+stringStartLineNum+", column "+stringStartColumnNum+")");
+							console.log('Could not tokenize: unterminated string (file \''+file+'\', line '+stringStartLineNum+', column '+stringStartColumnNum+')');
 							return null;
 						}
 						text+=input[i];
@@ -50,7 +50,7 @@ export class Tokenizer {
 				}
 
 				if (text.length<2 || text[0]!='"' || text[text.length-1]!='"') {
-					console.log("Could not tokenize: unterminated string (file '"+file+"', line "+stringStartLineNum+", column "+stringStartColumnNum+")");
+					console.log('Could not tokenize: unterminated string (file \''+file+'\', line '+stringStartLineNum+', column '+stringStartColumnNum+')');
 					return null;
 				}
 
@@ -127,7 +127,7 @@ export class Tokenizer {
 				continue;
 
 			// Unexpected character
-			console.log("Could not tokenize: unexpected character '"+c+"' (file '"+file+"', line "+lineNum+", column "+columnNum+")");
+			console.log('Could not tokenize: unexpected character \''+c+'\' (file \''+file+'\', line '+lineNum+', column '+columnNum+')');
 			return null;
 		}
 

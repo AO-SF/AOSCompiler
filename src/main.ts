@@ -8,7 +8,7 @@ let path=require('path');
 
 // Process arguments
 if (process.argv.length!=4) {
-	console.log("bad arguments"); // TODO: improve this
+	console.log('bad arguments'); // TODO: improve this
 	process.exit(1);
 }
 
@@ -21,7 +21,7 @@ const inputData = fs.readFileSync(path.resolve(__dirname, inputPath), 'utf8')
 // Tokenize
 let tokens=Tokenizer.tokenize(inputData, inputPath);
 if (tokens===null) {
-	console.log("Error: could not tokenize\n");
+	console.log('Error: could not tokenize\n');
 	process.exit(0);
 }
 
@@ -29,7 +29,7 @@ if (tokens===null) {
 let parser=new Parser();
 let ast=parser.parse(tokens);
 if (ast===null) {
-	console.log("Error: could not parse\n");
+	console.log('Error: could not parse\n');
 	process.exit(0);
 }
 
@@ -41,7 +41,7 @@ optimizer.optimize(ast);
 let generator=new Generator();
 let outputData=generator.generate(ast);
 if (outputData===null) {
-	console.log("Error: could not generate code\n");
+	console.log('Error: could not generate code\n');
 	process.exit(0);
 }
 
