@@ -433,7 +433,37 @@ export class Generator {
 			case AstNodeType.StatementInlineAsm: {
 				let quotedStringNode=node.children[0];
 
-				return this.parseQuotedString(quotedStringNode.tokens[0].text, quotedStringNode.tokens[0])+'\n';
+				// Unescape string (replace e.g. '\' followed by 'n' with single genuine newline)
+				let input=this.parseQuotedString(quotedStringNode.tokens[0].text, quotedStringNode.tokens[0])+'\n';
+
+				// If any variables should be substituted in.
+				let output='';
+				for(let i=0; i<input.length; ++i) {
+					// Check for '$' indicating start of variable which should be substituted
+					if (input[i]!='$') {
+						output+=input[i];
+						continue;
+					}
+
+					// Find the full extent of the symbol
+					let name='';
+					for(++i; i<input.length; ++i) {
+						if (!Parser.strIsSymbol(name+input[i]))
+							break;
+						name+=input[i];
+					}
+
+					// Generate code to move this symbol's address into r0, and add it to the inline asm
+					let symbolOutput=this.generateSymbolAddressByName(name);
+					if (symbolOutput===null) {
+						this.printError('internal error - unhandled symbol type for \''+name+'\' (inline asm variable substitution)', quotedStringNode.tokens[0]);
+						return null;
+					}
+
+					output+=symbolOutput;
+				}
+
+				return output;
 			} break;
 			case AstNodeType.Expression: {
 				// Goal of these Expression cases is to return value of (sub) expression in r0 (if any)
