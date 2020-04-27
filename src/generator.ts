@@ -221,7 +221,10 @@ export class Generator {
 
 				// Initial code to call main function and handle return status
 				let outputStart='';
-				outputStart+='; Call main and handle exit status once returns\n';
+				outputStart+='; Setup argc and argv then call main and handle exit status once returns\n';
+				outputStart+='mov r0 SyscallIdArgc\n';
+				outputStart+='syscall\n';
+				outputStart+='push8 r0\n';
 				let mainFunction=this.currentScope.getSymbolByName('main');
 				if (mainFunction===null || !(mainFunction instanceof ScopeFunction)) {
 					this.printError('missing \'main\' function', null);

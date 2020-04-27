@@ -12,7 +12,7 @@ void put_dec(uint16_t x) {
 	asm "$x\nload16 r0 r0\ncall putdec";
 }
 
-uint16_t main() {
+uint16_t main(uint8_t argc) {
 	// Initialise and print first value
 	uint16_t lower;
 	uint16_t upper;
