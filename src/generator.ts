@@ -643,54 +643,9 @@ export class Generator {
 						return 'mov r0 '+terminalStr+'\n';
 
 					// Terminal is symbol name?
-					let terminalSymbol=this.currentScope.getSymbolByName(terminalStr);
-					if (terminalSymbol!==null) {
-						if (terminalSymbol instanceof ScopeVariable) {
-							let terminalVariable=terminalSymbol as ScopeVariable;
-							let output='';
-
-							// Place address of variable into r0
-							output+=this.generateVariableAddress(terminalVariable);
-
-							// Load logic (address is in r0 from previous step)
-							if (terminalVariable.totalSize==1)
-								output+='load8 r0 r0\n';
-							else if (terminalVariable.totalSize==2)
-								output+='load16 r0 r0\n';
-							else {
-								// TODO: this
-								this.printError('internal error - unimplemented large-variable logic (expression terminal)', node.tokens[0]);
-								return null;
-							}
-
-							return output;
-						} else if (terminalSymbol instanceof ScopeFunction) {
-							this.printError('cannot use function symbol \''+terminalSymbol.name+'\' as a value', node.tokens[0]);
-							return null;
-						} else if (terminalSymbol instanceof ScopeArgument) {
-							let terminalArgument=terminalSymbol as ScopeArgument;
-							let output='';
-
-							// Place address of argument into r0
-							output+=this.generateArgumentAddress(terminalArgument);
-
-							// Load logic (address is in r0 from previous step)
-							if (terminalArgument.totalSize==1)
-								output+='load8 r0 r0\n';
-							else if (terminalArgument.totalSize==2)
-								output+='load16 r0 r0\n';
-							else {
-								// TODO: this
-								this.printError('internal error - unimplemented large-argument logic (expression terminal)', node.tokens[0]);
-								return null;
-							}
-
-							return output;
-						} else {
-							this.printError('internal error - unhandled symbol type for \''+terminalSymbol.name+'\' (expression terminal)', node.tokens[0]);
-							return null;
-						}
-					}
+					let outputSymbolValue=this.generateSymbolValueByName(terminalStr);
+					if (outputSymbolValue!==null)
+						return outputSymbolValue;
 
 					// Bad terminal
 					this.printError('bad literal \''+terminalStr+'\' in expression', node.tokens[0]);
@@ -810,6 +765,42 @@ export class Generator {
 
 		// Otherwise error
 		return null;
+	}
+
+	// Thin wrapper around generateSymbolValue
+	public generateSymbolValueByName(name: string):null|string {
+		let symbol=this.currentScope.getSymbolByName(name);
+		if (symbol===null)
+			return null;
+
+		return this.generateSymbolValue(symbol);
+	}
+
+	// This returns a string containing asm code which will move the value of the given symbol into r0.
+	// If the symbol is not a variable or an argument then returns null.
+	public generateSymbolValue(symbol: ScopeSymbol):null|string {
+		let output='';
+
+		// Not even the right kind of symbol?
+		if (!(symbol instanceof ScopeStorageSymbol))
+			return null;
+		let storageSymbol=symbol as ScopeStorageSymbol;
+
+		// Generate code to move address into r0
+		let outputAddress=this.generateSymbolAddress(symbol);
+		if (outputAddress===null)
+			return null;
+		output+=outputAddress;
+
+		// Generate loading code (address is in r0 from previous step)
+		if (storageSymbol.totalSize==1)
+			output+='load8 r0 r0\n';
+		else if (storageSymbol.totalSize==2)
+			output+='load16 r0 r0\n';
+		else
+			return null;
+
+		return output;
 	}
 
 	// This returns a string containing asm code which will move the address of the given variable into r0
