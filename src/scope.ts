@@ -10,9 +10,22 @@ export class ScopeSymbol {
 	}
 }
 
-export class ScopeVariable extends ScopeSymbol {
+export class ScopeStorageSymbol extends ScopeSymbol {
 	public constructor(scope: Scope, name:string, mangledName:string, definitionToken: Token, public type:string, public totalSize:number) {
 		super(scope, name, mangledName, definitionToken);
+	}
+
+	// For global variables returns 0.
+	// Otherwise returns how far into the relevant function's stack storage this variable is.
+	// Classes which implement this interface should redefine this as required.
+	public getStackAdjustment():number {
+		return 0;
+	}
+}
+
+export class ScopeVariable extends ScopeStorageSymbol {
+	public constructor(scope: Scope, name:string, mangledName:string, definitionToken: Token, type:string, totalSize:number) {
+		super(scope, name, mangledName, definitionToken, type, totalSize);
 	}
 
 	// For global variables, returns 0.
@@ -86,9 +99,9 @@ export class ScopeFunction extends ScopeSymbol {
 	}
 }
 
-export class ScopeArgument extends ScopeSymbol {
-	public constructor(scope: Scope, name:string, mangledName:string, definitionToken: Token, public type:string, public totalSize:number) {
-		super(scope, name, mangledName, definitionToken);
+export class ScopeArgument extends ScopeStorageSymbol {
+	public constructor(scope: Scope, name:string, mangledName:string, definitionToken: Token, type:string, totalSize:number) {
+		super(scope, name, mangledName, definitionToken, type, totalSize);
 	}
 
 	// Returns offset of this argument in the stack space allocated to arguments
