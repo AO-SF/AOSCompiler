@@ -176,6 +176,23 @@ export class Generator {
 
 				return true;
 			} break;
+			case AstNodeType.StatementIf: {
+				let conditionNode=node.children[0];
+				let bodyNode=node.children[1];
+
+				// Generate label names to use later
+				let mangledPrefix=this.currentScope.genNewSymbolMangledPrefix(node.id)+'_if';
+				let endLabel=this.currentScope.name+mangledPrefix+'end';
+
+				// Body
+				this.generateNodePassScopesPushScope(mangledPrefix+'body');
+				if (!this.generateNodePassScopes(bodyNode))
+					return false;
+				if (!this.generateNodePassScopesPopScope())
+					return false;
+
+				return true;
+			} break;
 			case AstNodeType.StatementInlineAsm:
 			case AstNodeType.Expression:
 			case AstNodeType.ExpressionAssignment:
@@ -447,6 +464,42 @@ export class Generator {
 
 				// Jump back to start and end label
 				output+='jmp '+startLabel+'\n';
+				output+='label '+endLabel+'\n';
+
+				return output;
+			} break;
+			case AstNodeType.StatementIf: {
+				let output='';
+
+				let conditionNode=node.children[0];
+				let bodyNode=node.children[1];
+
+				// Generate label names to use later
+				let mangledPrefix=this.currentScope.genNewSymbolMangledPrefix(node.id)+'_if';
+				let endLabel=this.currentScope.name+mangledPrefix+'end';
+
+				// Condition checking
+				let conditionOutput=this.generateNodePassCode(conditionNode);
+				if (conditionOutput===null)
+					return null;
+				output+=conditionOutput;
+				output+='cmp r0 r0 r0\n';
+				output+='skipneqz r0\n';
+				output+='jmp '+endLabel+'\n';
+
+				// Body
+				if (!this.generateNodePassCodeEnterScope(mangledPrefix+'body'))
+					return null;
+
+				let bodyOutput=this.generateNodePassCode(bodyNode);
+				if (bodyOutput===null)
+					return null;
+				output+=bodyOutput;
+
+				if (!this.generateNodePassCodeLeaveScope())
+					return null;
+
+				// End/false label
 				output+='label '+endLabel+'\n';
 
 				return output;

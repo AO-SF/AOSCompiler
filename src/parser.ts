@@ -195,6 +195,14 @@ export class Parser {
 						continue;
 					}
 
+					// If statement?
+					if (token.text=='if') {
+						currNode=this.nodeStackPush(AstNodeType.StatementIf);
+						currNode.tokens.push(token); // add token for better error reporting later
+
+						continue;
+					}
+
 					// Semicolon to terminate statement?
 					if (token.text==';') {
 						this.nodeStackPop();
@@ -241,6 +249,28 @@ export class Parser {
 					}
 				break;
 				case AstNodeType.StatementWhile:
+					// Open parenthesis starting condition?
+					if (token.text=='(') {
+						this.nodeStackPushHelper(currNode, AstNodeType.ExpressionBrackets);
+
+						continue;
+					}
+
+					// Closing parenthesis to terminate condition?
+					if (token.text==')') {
+						this.nodeStackPushHelper(currNode, AstNodeType.Block);
+
+						continue;
+					}
+
+					// Closing curly to terminate body?
+					if (token.text=='}') {
+						this.nodeStackPop();
+
+						continue;
+					}
+				break;
+				case AstNodeType.StatementIf:
 					// Open parenthesis starting condition?
 					if (token.text=='(') {
 						this.nodeStackPushHelper(currNode, AstNodeType.ExpressionBrackets);
@@ -519,6 +549,8 @@ export class Parser {
 			break;
 			case AstNodeType.StatementWhile:
 			break;
+			case AstNodeType.StatementIf:
+			break;
 			case AstNodeType.StatementInlineAsm:
 			break;
 			case AstNodeType.Expression:
@@ -561,7 +593,7 @@ export class Parser {
 	}
 
 	public static strIsKeyword(str: string):boolean {
-		if (str=='return' || str=='asm' || str=='while')
+		if (str=='return' || str=='asm' || str=='while' || str=='if')
 			return true;
 		return false;
 	}

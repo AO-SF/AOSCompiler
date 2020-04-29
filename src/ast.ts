@@ -12,6 +12,7 @@ export enum AstNodeType {
 	Statement,
 	StatementReturn,
 	StatementWhile,
+	StatementIf,
 	StatementInlineAsm,
 	Expression,
 	ExpressionAssignment,
