@@ -222,9 +222,27 @@ export class Generator {
 				// Initial code to call main function and handle return status
 				let outputStart='';
 				outputStart+='; Setup argc and argv then call main and handle exit status once returns\n';
-				outputStart+='mov r0 SyscallIdArgc\n';
+
+				outputStart+='mov r3 r6 ; save start of stack-based array to use as argv argument\n';
+				outputStart+='mov r1 0 ; argv loop index\n';
+				outputStart+='label argvLoopStart\n';
+
+				outputStart+='mov r0 SyscallIdArgvN\n';
 				outputStart+='syscall\n';
-				outputStart+='push8 r0\n';
+				outputStart+='cmp r2 r0 r0\n';
+				outputStart+='skipneqz r2\n';
+				outputStart+='jmp argvLoopEnd\n';
+
+				outputStart+='push16 r0 ; add to stack-based argv array\n';
+				outputStart+='inc r1\n';
+				outputStart+='jmp argvLoopStart\n';
+				outputStart+='label argvLoopEnd\n';
+
+				outputStart+='mov r0 SyscallIdArgc ; grab argc\n';
+				outputStart+='syscall\n';
+				outputStart+='push8 r0 ; push argc\n';
+				outputStart+='push16 r3 ; push argv\n';
+
 				let mainFunction=this.currentScope.getSymbolByName('main');
 				if (mainFunction===null || !(mainFunction instanceof ScopeFunction)) {
 					this.printError('missing \'main\' function', null);

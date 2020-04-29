@@ -6,7 +6,7 @@ void put_str(uint8_t *str) {
 	asm "$str\nload16 r0 r0\ncall puts0";
 }
 
-uint16_t main(uint8_t argc) {
+uint16_t main(uint8_t argc, uint8_t **argv) {
 	put_str("Hello world!\n");
 	return 0;
 }
