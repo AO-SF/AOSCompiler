@@ -156,6 +156,19 @@ export class Scope {
 		return scope;
 	}
 
+	public getLoopScope():null|Scope {
+		// Global scope is not a loop
+		if (this.parent===null)
+			return null;
+
+		// Is this a loop scope directly?
+		if (this.isLoop)
+			return this;
+
+		// Walk up tree until find loop ancestor (if any)
+		return this.parent.getLoopScope();
+	}
+
 	public getFunctionScope():null|Scope {
 		// Global scope has no function
 		if (this.parent===null)
