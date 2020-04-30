@@ -205,7 +205,7 @@ export class Parser {
 
 					// While statement?
 					if (token.text=='while') {
-						currNode=this.nodeStackPush(AstNodeType.StatementWhile);
+						currNode.type=AstNodeType.StatementWhile;
 						currNode.tokens.push(token); // add token for better error reporting later
 
 						continue;
@@ -213,7 +213,7 @@ export class Parser {
 
 					// If statement?
 					if (token.text=='if') {
-						currNode=this.nodeStackPush(AstNodeType.StatementIf);
+						currNode.type=AstNodeType.StatementIf;
 						currNode.tokens.push(token); // add token for better error reporting later
 
 						continue;
@@ -283,6 +283,8 @@ export class Parser {
 					if (token.text=='}') {
 						this.nodeStackPop();
 
+						this.nodeStackPush(AstNodeType.Statement); // this expression can be empty if another closing curly follows
+
 						continue;
 					}
 				break;
@@ -304,6 +306,8 @@ export class Parser {
 					// Closing curly to terminate body?
 					if (token.text=='}') {
 						this.nodeStackPop();
+
+						this.nodeStackPush(AstNodeType.Statement); // this expression can be empty if another closing curly follows
 
 						continue;
 					}
