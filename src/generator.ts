@@ -172,6 +172,22 @@ export class Generator {
 
 				return true;
 			} break;
+			case AstNodeType.StatementFor: {
+				let initNode=node.children[0];
+				let conditionNode=node.children[1];
+				let incrementNode=node.children[2];
+				let bodyNode=node.children[3];
+
+				// Body
+				let mangledPrefix=this.currentScope.genNewSymbolMangledPrefix(node.id)+'_for';
+				this.generateNodePassScopesPushScope(mangledPrefix+'body');
+				if (!this.generateNodePassScopes(bodyNode))
+					return false;
+				if (!this.generateNodePassScopesPopScope())
+					return false;
+
+				return true;
+			} break;
 			case AstNodeType.StatementIf: {
 				let conditionNode=node.children[0];
 				let bodyNode=node.children[1];
@@ -455,6 +471,64 @@ export class Generator {
 
 				if (!this.generateNodePassCodeLeaveScope())
 					return null;
+
+				// Jump back to start and end label
+				output+='jmp '+startLabel+'\n';
+				output+='label '+endLabel+'\n';
+
+				return output;
+			} break;
+			case AstNodeType.StatementFor: {
+				let output='';
+
+				let initNode=node.children[0];
+				let conditionNode=node.children[1];
+				let incrementNode=node.children[2];
+				let bodyNode=node.children[3];
+
+				// Generate label names to use later
+				let mangledPrefix=this.currentScope.genNewSymbolMangledPrefix(node.id)+'_for';
+				let startLabel=this.currentScope.name+mangledPrefix+'start';
+				let continueLabel=this.currentScope.name+mangledPrefix+'continue';
+				let endLabel=this.currentScope.name+mangledPrefix+'end';
+
+				// Generate initialisation code
+				let initOutput=this.generateNodePassCode(initNode);
+				if (initOutput===null)
+					return null;
+				output+=initOutput;
+
+				// Start label
+				output+='label '+startLabel+'\n';
+
+				// Condition checking
+				let conditionOutput=this.generateNodePassCode(conditionNode);
+				if (conditionOutput===null)
+					return null;
+				output+=conditionOutput;
+				output+='cmp r0 r0 r0\n';
+				output+='skipneqz r0\n';
+				output+='jmp '+endLabel+'\n';
+
+				// Generate body code
+				if (!this.generateNodePassCodeEnterScope(mangledPrefix+'body'))
+					return null;
+
+				let bodyOutput=this.generateNodePassCode(bodyNode);
+				if (bodyOutput===null)
+					return null;
+				output+=bodyOutput;
+
+				if (!this.generateNodePassCodeLeaveScope())
+					return null;
+
+				// Generate 'increment' code
+				output+='label '+continueLabel+'\n';
+
+				let incrementOutput=this.generateNodePassCode(incrementNode);
+				if (incrementOutput===null)
+					return null;
+				output+=incrementOutput;
 
 				// Jump back to start and end label
 				output+='jmp '+startLabel+'\n';

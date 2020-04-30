@@ -211,6 +211,14 @@ export class Parser {
 						continue;
 					}
 
+					// For statement?
+					if (token.text=='for') {
+						currNode.type=AstNodeType.StatementFor;
+						currNode.tokens.push(token); // add token for better error reporting later
+
+						continue;
+					}
+
 					// If statement?
 					if (token.text=='if') {
 						currNode.type=AstNodeType.StatementIf;
@@ -274,6 +282,37 @@ export class Parser {
 
 					// Closing parenthesis to terminate condition?
 					if (token.text==')') {
+						this.nodeStackPushHelper(currNode, AstNodeType.Block);
+
+						continue;
+					}
+
+					// Closing curly to terminate body?
+					if (token.text=='}') {
+						this.nodeStackPop();
+
+						this.nodeStackPush(AstNodeType.Statement); // this statement can be empty if another closing curly follows
+
+						continue;
+					}
+				break;
+				case AstNodeType.StatementFor:
+					// Open parenthesis starting initialisation statement?
+					if (token.text=='(' && currNode.children.length==0) {
+						this.nodeStackPushHelper(currNode, AstNodeType.Expression);
+
+						continue;
+					}
+
+					// Semicolon ending initialisation or condition statements?
+					if (token.text==';' && (currNode.children.length==1 || currNode.children.length==2)) {
+						this.nodeStackPushHelper(currNode, AstNodeType.Expression);
+
+						continue;
+					}
+
+					// Closing parenthesis ending increment statement?
+					if (token.text==')' && currNode.children.length==3) {
 						this.nodeStackPushHelper(currNode, AstNodeType.Block);
 
 						continue;
@@ -598,6 +637,8 @@ export class Parser {
 			break;
 			case AstNodeType.StatementWhile:
 			break;
+			case AstNodeType.StatementFor:
+			break;
 			case AstNodeType.StatementIf:
 			break;
 			case AstNodeType.StatementInlineAsm:
@@ -644,7 +685,7 @@ export class Parser {
 	}
 
 	public static strIsKeyword(str: string):boolean {
-		if (str=='return' || str=='asm' || str=='while' || str=='if')
+		if (str=='return' || str=='asm' || str=='while' || str=='for' || str=='if')
 			return true;
 		return false;
 	}
