@@ -17,6 +17,7 @@ export enum AstNodeType {
 	StatementInlineAsm,
 	Expression,
 	ExpressionAssignment,
+	ExpressionEquality,
 	ExpressionInequality,
 	ExpressionAddition,
 	ExpressionMultiplication,

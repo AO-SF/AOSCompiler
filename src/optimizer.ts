@@ -41,6 +41,7 @@ export class Optimizer {
 				case AstNodeType.Expression:
 				case AstNodeType.ExpressionBrackets:
 				case AstNodeType.ExpressionAssignment:
+				case AstNodeType.ExpressionEquality:
 				case AstNodeType.ExpressionInequality:
 				case AstNodeType.ExpressionAddition:
 				case AstNodeType.ExpressionMultiplication:

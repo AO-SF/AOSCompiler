@@ -205,6 +205,7 @@ export class Generator {
 			case AstNodeType.StatementInlineAsm:
 			case AstNodeType.Expression:
 			case AstNodeType.ExpressionAssignment:
+			case AstNodeType.ExpressionEquality:
 			case AstNodeType.ExpressionInequality:
 			case AstNodeType.ExpressionAddition:
 			case AstNodeType.ExpressionMultiplication:
@@ -658,6 +659,40 @@ export class Generator {
 
 				return output;
 			} break;
+			case AstNodeType.ExpressionEquality:
+				let output='';
+
+				// Generate LHS code and save value onto stack
+				let lhsOutput=this.generateNodePassCode(node.children[0]);
+				if (lhsOutput===null)
+					return null;
+
+				output+=lhsOutput;
+				output+='push16 r0\n';
+				this.globalStackAdjustment+=2;
+
+				// Generate RHS code and save value into r1
+				let rhsOutput=this.generateNodePassCode(node.children[1]);
+				if (rhsOutput===null)
+					return null;
+
+				output+=rhsOutput;
+				output+='mov r1 r0\n';
+
+				// Compare code
+				this.globalStackAdjustment-=2;
+				output+='pop16 r0\n';
+				output+='cmp r1 r0 r1\n';
+				output+='mov r0 1\n';
+				switch(node.tokens[0].text) {
+					case '==': output+='skipeq r1\n'; break;
+					case '!=': output+='skipneq r1\n'; break;
+					default: return null; break; // TODO: add error message probably
+				}
+				output+='mov r0 0\n';
+
+				return output;
+			break;
 			case AstNodeType.ExpressionInequality: {
 				let output='';
 

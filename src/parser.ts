@@ -386,13 +386,32 @@ export class Parser {
 					if (token.text=='=') {
 						currNode.tokens.push(token);
 
-						this.nodeStackPush(AstNodeType.ExpressionInequality);
+						this.nodeStackPush(AstNodeType.ExpressionEquality);
 
 						continue;
 					}
 
 					// Terminators
 					if (token.text==']' || token.text==')' || token.text==',' || token.text==';') {
+						this.nodeStackPop();
+
+						input.unshift(token);
+
+						continue;
+					}
+				break;
+				case AstNodeType.ExpressionEquality:
+					// Equality operator to indicate another operand?
+					if (token.text=='==' || token.text=='!=') {
+						currNode.tokens.push(token);
+
+						this.nodeStackPush(AstNodeType.ExpressionInequality);
+
+						continue;
+					}
+
+					// Terminators
+					if (token.text=='=' || token.text==']' || token.text==')' || token.text==',' || token.text==';') {
 						this.nodeStackPop();
 
 						input.unshift(token);
@@ -411,7 +430,7 @@ export class Parser {
 					}
 
 					// Terminators
-					if (token.text=='=' || token.text==']' || token.text==')' || token.text==',' || token.text==';') {
+					if (token.text=='==' || token.text=='!=' || token.text=='=' || token.text==']' || token.text==')' || token.text==',' || token.text==';') {
 						this.nodeStackPop();
 
 						input.unshift(token);
@@ -430,7 +449,7 @@ export class Parser {
 					}
 
 					// Terminators
-					if (token.text=='<' || token.text=='<=' || token.text=='>' || token.text=='>=' || token.text=='=' || token.text==']' || token.text==')' || token.text==',' || token.text==';') {
+					if (token.text=='<' || token.text=='<=' || token.text=='>' || token.text=='>=' || token.text=='==' || token.text=='!=' || token.text=='=' || token.text==']' || token.text==')' || token.text==',' || token.text==';') {
 						this.nodeStackPop();
 
 						input.unshift(token);
@@ -449,7 +468,7 @@ export class Parser {
 					}
 
 					// Terminators
-					if (token.text=='+' || token.text=='-' || token.text=='<' || token.text=='<=' || token.text=='>' || token.text=='>=' || token.text=='=' || token.text==']' || token.text==')' || token.text==',' || token.text==';') {
+					if (token.text=='+' || token.text=='-' || token.text=='<' || token.text=='<=' || token.text=='>' || token.text=='>=' || token.text=='==' || token.text=='!=' || token.text=='=' || token.text==']' || token.text==')' || token.text==',' || token.text==';') {
 						this.nodeStackPop();
 
 						input.unshift(token);
@@ -647,6 +666,9 @@ export class Parser {
 				this.nodeStackPushHelper(node, AstNodeType.ExpressionAssignment);
 			break;
 			case AstNodeType.ExpressionAssignment:
+				this.nodeStackPushHelper(node, AstNodeType.ExpressionEquality);
+			break;
+			case AstNodeType.ExpressionEquality:
 				this.nodeStackPushHelper(node, AstNodeType.ExpressionInequality);
 			break;
 			case AstNodeType.ExpressionInequality:
