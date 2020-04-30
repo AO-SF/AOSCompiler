@@ -11,6 +11,7 @@ export enum AstNodeType {
 	Block,
 	Statement,
 	StatementReturn,
+	StatementContinue,
 	StatementWhile,
 	StatementFor,
 	StatementIf,

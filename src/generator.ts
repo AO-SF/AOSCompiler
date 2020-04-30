@@ -158,6 +158,9 @@ export class Generator {
 				}
 				return true;
 			} break;
+			case AstNodeType.StatementContinue:
+				return true;
+			break;
 			case AstNodeType.StatementWhile: {
 				let conditionNode=node.children[0];
 				let bodyNode=node.children[1];
@@ -417,6 +420,21 @@ export class Generator {
 
 				return output;
 			} break;
+			case AstNodeType.StatementContinue: {
+				let output='';
+
+				// Find relevant loop and continue label
+				let continueLabel=this.currentScope.getLoopContinueLabel();
+				if (continueLabel===null) {
+					this.printError('\'continue\' statement not in loop scope', node.tokens[0]);
+					return null;
+				}
+
+				// Generate code to jump to continue label
+				output+='jmp '+continueLabel+'\n';
+
+				return output;
+			} break;
 			case AstNodeType.StatementReturn: {
 				let output='';
 
@@ -447,10 +465,12 @@ export class Generator {
 				// Generate label names to use later
 				let mangledPrefix=this.currentScope.genNewSymbolMangledPrefix(node.id)+'_while';
 				let startLabel=this.currentScope.name+mangledPrefix+'start';
+				let continueLabel=this.currentScope.name+mangledPrefix+'continue';
 				let endLabel=this.currentScope.name+mangledPrefix+'end';
 
-				// Start label
+				// Start and continue labels
 				output+='label '+startLabel+'\n';
+				output+='label '+continueLabel+'\n';
 
 				// Condition checking
 				let conditionOutput=this.generateNodePassCode(conditionNode);

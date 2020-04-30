@@ -21,6 +21,7 @@ export class Optimizer {
 				case AstNodeType.FunctionDefinitionArguments:
 				case AstNodeType.Block:
 				case AstNodeType.StatementReturn:
+				case AstNodeType.StatementContinue:
 				case AstNodeType.StatementWhile:
 				case AstNodeType.StatementFor:
 				case AstNodeType.StatementIf:

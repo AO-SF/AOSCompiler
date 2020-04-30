@@ -194,6 +194,15 @@ export class Parser {
 						continue;
 					}
 
+					// Continue statement?
+					if (token.text=='continue') {
+						this.nodeStackPush(AstNodeType.StatementContinue);
+
+						input.unshift(token);
+
+						continue;
+					}
+
 					// Inline asm statement?
 					if (token.text=='asm') {
 						this.nodeStackPush(AstNodeType.StatementInlineAsm);
@@ -270,6 +279,20 @@ export class Parser {
 						input.unshift(token);
 
 						continue;
+					}
+				break;
+				case AstNodeType.StatementContinue:
+					// 'continue' keyword to start statement?
+					if (currNode.tokens.length==0 && token.text=='continue') {
+						// Add token for better error reporting later
+						currNode.tokens.push(token);
+
+						// Peek at next token - must be semicolon
+						if (input.length>0 && input[0].text==';') {
+							this.nodeStackPop();
+
+							continue;
+						}
 					}
 				break;
 				case AstNodeType.StatementWhile:
@@ -654,6 +677,8 @@ export class Parser {
 			break;
 			case AstNodeType.StatementReturn:
 			break;
+			case AstNodeType.StatementContinue:
+			break;
 			case AstNodeType.StatementWhile:
 			break;
 			case AstNodeType.StatementFor:
@@ -707,7 +732,7 @@ export class Parser {
 	}
 
 	public static strIsKeyword(str: string):boolean {
-		if (str=='return' || str=='asm' || str=='while' || str=='for' || str=='if')
+		if (str=='return' || str=='asm' || str=='while' || str=='for' || str=='if' || str=='continue')
 			return true;
 		return false;
 	}

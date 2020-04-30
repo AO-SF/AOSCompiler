@@ -169,6 +169,24 @@ export class Scope {
 		return this.parent.getLoopScope();
 	}
 
+	public getLoopContinueLabel():null|string {
+		// Find relevant loop scope
+		let loopScope=this.getLoopScope();
+		if (loopScope===null)
+			return null;
+
+		// Loop scope name should end in 'body'
+		let label=loopScope.name;
+		if (label.slice(label.length-4)!='body')
+			return null;
+
+		// Strip off 'body' and add 'continue' instead.
+		label=label.slice(0, label.length-4);
+		label+='continue';
+
+		return label;
+	}
+
 	public getFunctionScope():null|Scope {
 		// Global scope has no function
 		if (this.parent===null)
