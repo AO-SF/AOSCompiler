@@ -283,7 +283,7 @@ export class Parser {
 					if (token.text=='}') {
 						this.nodeStackPop();
 
-						this.nodeStackPush(AstNodeType.Statement); // this expression can be empty if another closing curly follows
+						this.nodeStackPush(AstNodeType.Statement); // this statement can be empty if another closing curly follows
 
 						continue;
 					}
