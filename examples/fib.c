@@ -1,12 +1,12 @@
 // Print Fibonacci sequence
 
-void put_char(uint8_t c) {
+void putc(uint8_t c) {
 	// Use putc0 library function
 	asm "requireend lib/std/io/fput.s";
 	asm "$c\nload8 r0 r0\ncall putc0";
 }
 
-void put_dec(uint16_t x) {
+void putd(uint16_t x) {
 	// Print x using putdec library function
 	asm "requireend lib/std/io/fputdec.s";
 	asm "$x\nload16 r0 r0\ncall putdec";
@@ -20,14 +20,14 @@ uint16_t main(uint8_t argc, uint8_t **argv) {
 	lower=0;
 	upper=1;
 
-	put_dec(lower);
+	putd(lower);
 
 	// Loop to print subsequent values
 	while(lower<40000) {
 		// Print separator followed by value
-		put_char(44); // ','
-		put_char(32); // ' '
-		put_dec(upper);
+		putc(44); // ','
+		putc(32); // ' '
+		putd(upper);
 
 		// Execute single Fibonacci step
 		uint16_t sum;
@@ -37,7 +37,7 @@ uint16_t main(uint8_t argc, uint8_t **argv) {
 	}
 
 	// Print newline
-	put_char(10);
+	putc(10);
 
 	return 0;
 }
