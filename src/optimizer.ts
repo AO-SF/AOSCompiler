@@ -24,7 +24,6 @@ export class Optimizer {
 				case AstNodeType.StatementWhile:
 				case AstNodeType.StatementIf:
 				case AstNodeType.StatementInlineAsm:
-				case AstNodeType.ExpressionTerminal:
 				case AstNodeType.ExpressionCall:
 				case AstNodeType.QuotedString:
 					// No optimizations available
@@ -43,6 +42,7 @@ export class Optimizer {
 				case AstNodeType.ExpressionInequality:
 				case AstNodeType.ExpressionAddition:
 				case AstNodeType.ExpressionMultiplication:
+				case AstNodeType.ExpressionTerminal:
 					// If no tokens and only one child then remove and replace with said child
 					if (child.tokens.length==0 && child.children.length==1) {
 						node.children[i]=child.children[0];

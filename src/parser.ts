@@ -169,6 +169,22 @@ export class Parser {
 						continue;
 					}
 
+					// Open parenthesis suggesting expression group?
+					if (token.text=='(') {
+						this.nodeStackPush(AstNodeType.Expression);
+
+						input.unshift(token);
+
+						continue;
+					}
+
+					// Closing parenthesis ending group?
+					if (token.text==')') {
+						this.nodeStackPop();
+
+						continue;
+					}
+
 					// Return statement?
 					if (token.text=='return') {
 						this.nodeStackPush(AstNodeType.StatementReturn);
