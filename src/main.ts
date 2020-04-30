@@ -8,7 +8,7 @@ let path=require('path');
 
 // Process arguments
 if (process.argv.length!=4) {
-	console.log('bad arguments'); // TODO: improve this
+	console.log('Usage: '+process.argv[0]+' '+process.argv[1]+' inputfile outputfile');
 	process.exit(1);
 }
 
