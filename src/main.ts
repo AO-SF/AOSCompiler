@@ -7,13 +7,20 @@ let fs=require('fs');
 let path=require('path');
 
 // Process arguments
-if (process.argv.length!=4) {
-	console.log('Usage: '+process.argv[0]+' '+process.argv[1]+' inputfile outputfile');
+if (process.argv.length!=4 && process.argv.length!=5) {
+	console.log('Usage: '+process.argv[0]+' '+process.argv[1]+' [--ast] inputfile outputfile');
 	process.exit(1);
 }
 
-const inputPath=process.argv[2];
-const outputPath=process.argv[3];
+let showAst=false;
+for(let i=2; i<process.argv.length-2; ++i) {
+	if (process.argv[i]=='--ast')
+		showAst=true;
+	else
+		console.log('Warning: unknown option \''+process.argv[i]+'\'');
+}
+const inputPath=process.argv[process.argv.length-2];
+const outputPath=process.argv[process.argv.length-1];
 
 // Load input file data
 const inputData = fs.readFileSync(path.resolve(__dirname, inputPath), 'utf8')
@@ -36,6 +43,13 @@ if (ast===null) {
 // Optimize
 let optimizer=new Optimizer();
 optimizer.optimize(ast);
+
+// Output AST if needed
+if (showAst) {
+	console.log("Abstract syntax tree:");
+	ast.debug();
+	console.log('');
+}
 
 // Generate code
 let generator=new Generator();
