@@ -4,7 +4,7 @@ import { Scope, ScopeSymbol, ScopeVariable, ScopeFunction, ScopeArgument, ScopeS
 import { Token } from './tokenizer';
 
 export class Generator {
-	private globalScope: Scope = new Scope('global', null);
+	private globalScope: Scope = new Scope('global', null, false);
 	private currentScope: Scope;
 	private globalStackAdjustment:number = 0; // this is required so that we can still determine the address of automatic variables, despite adjusting the stack pointer mid-function
 
@@ -17,7 +17,7 @@ export class Generator {
 			return null;
 
 		// Reset state
-		this.globalScope=new Scope('global', null);
+		this.globalScope=new Scope('global', null, false);
 		this.currentScope=this.globalScope;
 		this.globalStackAdjustment=0;
 
@@ -95,7 +95,7 @@ export class Generator {
 				let func=this.currentScope.addFunction(name, node.id, nameNode.tokens[0]);
 
 				// Enter function scope
-				this.generateNodePassScopesPushScope(func.getScopeName());
+				this.generateNodePassScopesPushScope(func.getScopeName(), false);
 
 				// Pass to register any arguments
 				if (argumentsNode!==null && !this.generateNodePassScopes(argumentsNode))
@@ -164,7 +164,7 @@ export class Generator {
 
 				// Body
 				let mangledPrefix=this.currentScope.genNewSymbolMangledPrefix(node.id)+'_while';
-				this.generateNodePassScopesPushScope(mangledPrefix+'body');
+				this.generateNodePassScopesPushScope(mangledPrefix+'body', true);
 				if (!this.generateNodePassScopes(bodyNode))
 					return false;
 				if (!this.generateNodePassScopesPopScope())
@@ -180,7 +180,7 @@ export class Generator {
 
 				// Body
 				let mangledPrefix=this.currentScope.genNewSymbolMangledPrefix(node.id)+'_for';
-				this.generateNodePassScopesPushScope(mangledPrefix+'body');
+				this.generateNodePassScopesPushScope(mangledPrefix+'body', true);
 				if (!this.generateNodePassScopes(bodyNode))
 					return false;
 				if (!this.generateNodePassScopesPopScope())
@@ -194,7 +194,7 @@ export class Generator {
 
 				// Body
 				let mangledPrefix=this.currentScope.genNewSymbolMangledPrefix(node.id)+'_if';
-				this.generateNodePassScopesPushScope(mangledPrefix+'body');
+				this.generateNodePassScopesPushScope(mangledPrefix+'body', false);
 				if (!this.generateNodePassScopes(bodyNode))
 					return false;
 				if (!this.generateNodePassScopesPopScope())
@@ -1136,8 +1136,8 @@ export class Generator {
 			console.log('Could not generate code: '+message);
 	}
 
-	private generateNodePassScopesPushScope(name: string) {
-		this.currentScope=this.currentScope.push(name);
+	private generateNodePassScopesPushScope(name: string, isLoop:boolean) {
+		this.currentScope=this.currentScope.push(name, isLoop);
 	}
 
 	private generateNodePassScopesPopScope():boolean {

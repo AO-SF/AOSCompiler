@@ -146,12 +146,12 @@ export class Scope {
 	public symbols: ScopeSymbol[] = [];
 	public children: Scope[] = [];
 
-	public constructor(public name:string, public parent:null|Scope) {
+	public constructor(public name:string, public parent:null|Scope, public isLoop:boolean) {
 	}
 
-	public push(name: string):Scope {
+	public push(name: string, isLoop:boolean):Scope {
 		name=this.name+name;
-		let scope=new Scope(name, this);
+		let scope=new Scope(name, this, isLoop);
 		this.children.push(scope);
 		return scope;
 	}
@@ -326,6 +326,8 @@ export class Scope {
 				// Non-function scopes
 				str+='stackOffset='+this.getStackOffset()+', ';
 			str+='stackAllocation='+this.getTotalVariableSizeAllocation();
+			if (this.isLoop)
+				str+=', loop';
 			str+=')';
 		}
 
