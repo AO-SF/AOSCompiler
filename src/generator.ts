@@ -202,6 +202,7 @@ export class Generator {
 			case AstNodeType.ExpressionTerminal:
 			case AstNodeType.ExpressionBrackets:
 			case AstNodeType.ExpressionCall:
+			case AstNodeType.ExpressionDereference:
 			case AstNodeType.QuotedString:
 				return true;
 			break;
@@ -787,6 +788,86 @@ export class Generator {
 
 				return output;
 			} break;
+			case AstNodeType.ExpressionDereference: {
+				let output = '';
+
+				let ptrName=node.tokens[0].text;
+
+				// Lookup symbol in scope
+				let symbol=this.currentScope.getSymbolByName(ptrName);
+				if (symbol===null) {
+					this.printError('bad dereference - no such symbol \''+ptrName+'\'', node.tokens[0]);
+					return null;
+				}
+
+				if (!(symbol instanceof ScopeStorageSymbol)) {
+					this.printError('bad dereference - symbol \''+ptrName+'\' is not a variable', node.tokens[0]);
+					return null;
+				}
+
+				let storageSymbol=symbol as ScopeStorageSymbol;
+
+				let dereferencedType=this.typeDereference(storageSymbol.type);
+				if (dereferencedType===null) {
+					this.printError('bad dereference - symbol \''+ptrName+'\' is not a pointer', node.tokens[0]);
+					return null;
+				}
+
+				// Generate code for expression within square brackets, and protect it by placing onto the stack
+				let expressionCode=this.generateNodePassCode(node.children[0]);
+				if (expressionCode===null)
+					return null;
+				output+=expressionCode;
+
+				output+='push16 r0\n';
+				this.globalStackAdjustment+=2;
+
+				// Generate code to load pointer base address into r0
+				let baseAddressCode=this.generateSymbolValue(storageSymbol);
+				if (baseAddressCode===null) {
+					// TODO: if we make versions of functions like generateSymbolValue which accept ScopeStorageSymbol instead then won't have to worry about null
+					this.printError('bad dereference - internal error', node.tokens[0]);
+					return null;
+				}
+				output+=baseAddressCode;
+
+				// Compute true address by taking the base address and adding the offset (suitably multiplied), and store into r0
+				output+='pop16 r1\n'; // restore expression value
+				this.globalStackAdjustment-=2;
+
+				switch(this.typeToSize(dereferencedType)) {
+					case 1:
+						output+='add r0 r0 r1\n';
+					break;
+					case 2:
+						// easier to add twice rather than try to multiply then add
+						output+='add r0 r0 r1\n';
+						output+='add r0 r0 r1\n';
+					break;
+					default:
+						// TODO: this
+						this.printError('internal error - unimplemented large-variable logic (dereference)', node.tokens[0]);
+						return null;
+					break;
+				}
+
+				// Generate code to actually do the dereferencing by doing a load operation
+				switch(this.typeToSize(dereferencedType)) {
+					case 1:
+						output+='load8 r0 r0\n';
+					break;
+					case 2:
+						output+='load16 r0 r0\n';
+					break;
+					default:
+						// TODO: this
+						this.printError('internal error - unimplemented large-variable logic (dereference)', node.tokens[0]);
+						return null;
+					break;
+				}
+
+				return output;
+			} break;
 			case AstNodeType.QuotedString: {
 				// Parse quoted string from input token
 				let text=this.parseQuotedString(node.tokens[0].text, node.tokens[0]);
@@ -932,6 +1013,18 @@ export class Generator {
 			return 2;
 		else
 			return 0;
+	}
+
+	private typeDereference(type: string):null|string {
+		if (type.length==0)
+			return null;
+
+		// Not even a pointer type? If so cannot dereference
+		if (type[type.length-1]!='*')
+			return null;
+
+		// Strip final '*' off to reduce indirection by one level
+		return type.substring(0, type.length-1);
 	}
 
 	public printError(message: string, token:null|Token) {

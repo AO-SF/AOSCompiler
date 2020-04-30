@@ -334,7 +334,7 @@ export class Parser {
 				break;
 				case AstNodeType.Expression:
 					// Terminator?
-					if (token.text==')' || token.text==',' || token.text==';') {
+					if (token.text==']' || token.text==')' || token.text==',' || token.text==';') {
 						this.nodeStackPop();
 
 						input.unshift(token);
@@ -353,7 +353,7 @@ export class Parser {
 					}
 
 					// Terminators
-					if (token.text==')' || token.text==',' || token.text==';') {
+					if (token.text==']' || token.text==')' || token.text==',' || token.text==';') {
 						this.nodeStackPop();
 
 						input.unshift(token);
@@ -372,7 +372,7 @@ export class Parser {
 					}
 
 					// Terminators
-					if (token.text=='=' || token.text==')' || token.text==',' || token.text==';') {
+					if (token.text=='=' || token.text==']' || token.text==')' || token.text==',' || token.text==';') {
 						this.nodeStackPop();
 
 						input.unshift(token);
@@ -391,7 +391,7 @@ export class Parser {
 					}
 
 					// Terminators
-					if (token.text=='<' || token.text=='<=' || token.text=='>' || token.text=='>=' || token.text=='=' || token.text==')' || token.text==',' || token.text==';') {
+					if (token.text=='<' || token.text=='<=' || token.text=='>' || token.text=='>=' || token.text=='=' || token.text==']' || token.text==')' || token.text==',' || token.text==';') {
 						this.nodeStackPop();
 
 						input.unshift(token);
@@ -410,7 +410,7 @@ export class Parser {
 					}
 
 					// Terminators
-					if (token.text=='+' || token.text=='-' || token.text=='<' || token.text=='<=' || token.text=='>' || token.text=='>=' || token.text=='=' || token.text==')' || token.text==',' || token.text==';') {
+					if (token.text=='+' || token.text=='-' || token.text=='<' || token.text=='<=' || token.text=='>' || token.text=='>=' || token.text=='=' || token.text==']' || token.text==')' || token.text==',' || token.text==';') {
 						this.nodeStackPop();
 
 						input.unshift(token);
@@ -427,6 +427,20 @@ export class Parser {
 
 							// Update node
 							currNode.type=AstNodeType.ExpressionCall;
+							currNode.tokens.push(token);
+
+							continue;
+						}
+					}
+
+					// Symbol followed by open square bracket to indicate array dereference?
+					if (Parser.strIsSymbol(token.text)) {
+						// Peek at next token
+						if (input.length>0 && input[0].text=='[') {
+							input.shift();
+
+							// Update node
+							currNode.type=AstNodeType.ExpressionDereference;
 							currNode.tokens.push(token);
 
 							continue;
@@ -487,6 +501,21 @@ export class Parser {
 					// Comma to indicate next argument?
 					if (token.text==',') {
 						this.nodeStackPush(AstNodeType.Expression);
+
+						continue;
+					}
+
+					// Otherwise must be an expression
+					input.unshift(token);
+
+					this.nodeStackPush(AstNodeType.Expression);
+
+					continue;
+				break;
+				case AstNodeType.ExpressionDereference:
+					// Closing square bracket to indicate end of dereference?
+					if (token.text==']') {
+						this.nodeStackPop();
 
 						continue;
 					}
@@ -594,6 +623,8 @@ export class Parser {
 				this.nodeStackPushHelper(node, AstNodeType.ExpressionAssignment);
 			break;
 			case AstNodeType.ExpressionCall:
+			break;
+			case AstNodeType.ExpressionDereference:
 			break;
 			case AstNodeType.QuotedString:
 			break;

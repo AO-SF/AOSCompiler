@@ -22,6 +22,7 @@ export enum AstNodeType {
 	ExpressionTerminal,
 	ExpressionBrackets,
 	ExpressionCall,
+	ExpressionDereference,
 	QuotedString,
 };
 
