@@ -14,7 +14,7 @@ uint16_t main(uint8_t argc, uint8_t **argv) {
 			put_str(" ");
 		}
 
-		// Print current argument and increment i to handle next instruction
+		// Print current argument and increment i to handle next argument
 		put_str(argv[i]);
 		i=i+1;
 	}
