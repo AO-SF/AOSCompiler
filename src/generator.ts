@@ -162,12 +162,8 @@ export class Generator {
 				let conditionNode=node.children[0];
 				let bodyNode=node.children[1];
 
-				// Generate label names to use later
-				let mangledPrefix=this.currentScope.genNewSymbolMangledPrefix(node.id)+'_loop';
-				let startLabel=this.currentScope.name+mangledPrefix+'start';
-				let endLabel=this.currentScope.name+mangledPrefix+'end';
-
 				// Body
+				let mangledPrefix=this.currentScope.genNewSymbolMangledPrefix(node.id)+'_while';
 				this.generateNodePassScopesPushScope(mangledPrefix+'body');
 				if (!this.generateNodePassScopes(bodyNode))
 					return false;
@@ -180,11 +176,8 @@ export class Generator {
 				let conditionNode=node.children[0];
 				let bodyNode=node.children[1];
 
-				// Generate label names to use later
-				let mangledPrefix=this.currentScope.genNewSymbolMangledPrefix(node.id)+'_if';
-				let endLabel=this.currentScope.name+mangledPrefix+'end';
-
 				// Body
+				let mangledPrefix=this.currentScope.genNewSymbolMangledPrefix(node.id)+'_if';
 				this.generateNodePassScopesPushScope(mangledPrefix+'body');
 				if (!this.generateNodePassScopes(bodyNode))
 					return false;
@@ -435,7 +428,7 @@ export class Generator {
 				let bodyNode=node.children[1];
 
 				// Generate label names to use later
-				let mangledPrefix=this.currentScope.genNewSymbolMangledPrefix(node.id)+'_loop';
+				let mangledPrefix=this.currentScope.genNewSymbolMangledPrefix(node.id)+'_while';
 				let startLabel=this.currentScope.name+mangledPrefix+'start';
 				let endLabel=this.currentScope.name+mangledPrefix+'end';
 
