@@ -12,6 +12,7 @@ export enum AstNodeType {
 	Statement,
 	StatementReturn,
 	StatementContinue,
+	StatementBreak,
 	StatementWhile,
 	StatementFor,
 	StatementIf,

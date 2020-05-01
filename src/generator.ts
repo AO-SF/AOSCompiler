@@ -161,6 +161,9 @@ export class Generator {
 			case AstNodeType.StatementContinue:
 				return true;
 			break;
+			case AstNodeType.StatementBreak:
+				return true;
+			break;
 			case AstNodeType.StatementWhile: {
 				let conditionNode=node.children[0];
 				let bodyNode=node.children[1];
@@ -435,6 +438,21 @@ export class Generator {
 
 				return output;
 			} break;
+			case AstNodeType.StatementBreak: {
+				let output='';
+
+				// Find relevant loop and break label
+				let breakLabel=this.currentScope.getLoopBreakLabel();
+				if (breakLabel===null) {
+					this.printError('\'break\' statement not in loop scope', node.tokens[0]);
+					return null;
+				}
+
+				// Generate code to jump to break label
+				output+='jmp '+breakLabel+'\n';
+
+				return output;
+			} break;
 			case AstNodeType.StatementReturn: {
 				let output='';
 
@@ -466,7 +484,7 @@ export class Generator {
 				let mangledPrefix=this.currentScope.genNewSymbolMangledPrefix(node.id)+'_while';
 				let startLabel=this.currentScope.name+mangledPrefix+'start';
 				let continueLabel=this.currentScope.name+mangledPrefix+'continue';
-				let endLabel=this.currentScope.name+mangledPrefix+'end';
+				let breakLabel=this.currentScope.name+mangledPrefix+'break';
 
 				// Start and continue labels
 				output+='label '+startLabel+'\n';
@@ -479,7 +497,7 @@ export class Generator {
 				output+=conditionOutput;
 				output+='cmp r0 r0 r0\n';
 				output+='skipneqz r0\n';
-				output+='jmp '+endLabel+'\n';
+				output+='jmp '+breakLabel+'\n';
 
 				// Body
 				if (!this.generateNodePassCodeEnterScope(mangledPrefix+'body'))
@@ -493,9 +511,9 @@ export class Generator {
 				if (!this.generateNodePassCodeLeaveScope())
 					return null;
 
-				// Jump back to start and end label
+				// Jump back to start and add break label
 				output+='jmp '+startLabel+'\n';
-				output+='label '+endLabel+'\n';
+				output+='label '+breakLabel+'\n';
 
 				return output;
 			} break;
@@ -511,7 +529,7 @@ export class Generator {
 				let mangledPrefix=this.currentScope.genNewSymbolMangledPrefix(node.id)+'_for';
 				let startLabel=this.currentScope.name+mangledPrefix+'start';
 				let continueLabel=this.currentScope.name+mangledPrefix+'continue';
-				let endLabel=this.currentScope.name+mangledPrefix+'end';
+				let breakLabel=this.currentScope.name+mangledPrefix+'break';
 
 				// Generate initialisation code
 				let initOutput=this.generateNodePassCode(initNode);
@@ -529,7 +547,7 @@ export class Generator {
 				output+=conditionOutput;
 				output+='cmp r0 r0 r0\n';
 				output+='skipneqz r0\n';
-				output+='jmp '+endLabel+'\n';
+				output+='jmp '+breakLabel+'\n';
 
 				// Generate body code
 				if (!this.generateNodePassCodeEnterScope(mangledPrefix+'body'))
@@ -551,9 +569,9 @@ export class Generator {
 					return null;
 				output+=incrementOutput;
 
-				// Jump back to start and end label
+				// Jump back to start and add break label
 				output+='jmp '+startLabel+'\n';
-				output+='label '+endLabel+'\n';
+				output+='label '+breakLabel+'\n';
 
 				return output;
 			} break;

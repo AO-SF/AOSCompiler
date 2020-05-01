@@ -187,6 +187,24 @@ export class Scope {
 		return label;
 	}
 
+	public getLoopBreakLabel():null|string {
+		// Find relevant loop scope
+		let loopScope=this.getLoopScope();
+		if (loopScope===null)
+			return null;
+
+		// Loop scope name should end in 'body'
+		let label=loopScope.name;
+		if (label.slice(label.length-4)!='body')
+			return null;
+
+		// Strip off 'body' and add 'break' instead.
+		label=label.slice(0, label.length-4);
+		label+='break';
+
+		return label;
+	}
+
 	public getFunctionScope():null|Scope {
 		// Global scope has no function
 		if (this.parent===null)
