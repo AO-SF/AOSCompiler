@@ -27,7 +27,18 @@ uint16_t main(uint8_t argc, uint8_t **argv) {
 
 // Reads and executes commands from given fd. Returns 1 unless exit was called in which case 0 is returned.
 uint8_t runFd(uint8_t fd, uint8_t interactiveMode) {
-	// TODO: this
+	// Input loop
+	uint16_t readOffset;
+	readOffset=0;
+	while(1) {
+		// If in interactive mode then print a prompt consisting of pwd and dollar character
+		if (interactiveMode) {
+			puts(getPwd());
+			puts("$ ");
+		}
+
+		// TODO: rest of this
+	}
 
 	// Return 1 to indicate we should move onto the next input file/stdin
 	return 1;
@@ -68,4 +79,17 @@ void close(uint8_t fd) {
 	asm "$fd\nload8 r1 r0";
 	asm "mov r0 SyscallIdClose";
 	asm "syscall";
+}
+
+uint8_t *getPwd() {
+	asm "mov r0 SyscallIdEnvGetPwd";
+	asm "syscall";
+
+	uint8_t *pwd;
+	asm "push16 r0";
+	asm "$pwd\ndec2 r0"; // dec2 is because we adjusted stack in previous asm code
+	asm "pop16 r1";
+	asm "store16 r0 r1";
+
+	return pwd;
 }
