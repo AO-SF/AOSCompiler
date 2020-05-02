@@ -1,3 +1,5 @@
+uint8_t readBuffer[256]; // this is global as otherwise makes stack calculations more difficult/slower in runFd
+
 uint16_t main(uint8_t argc, uint8_t **argv) {
 	// Run any scripts pass as arguments
 	uint8_t i;
@@ -37,7 +39,16 @@ uint8_t runFd(uint8_t fd, uint8_t interactiveMode) {
 			puts("$ ");
 		}
 
-		// TODO: rest of this
+		// Read line from fd
+		// TODO: use 32 bit version of fgets to handle large files
+		uint16_t readCount;
+		readCount=fgets(fd, readOffset, readBuffer, 256);
+		if (readCount==0) {
+			break; // end of file
+		}
+
+		// TODO: rest of this (for now simply echo input back to user)
+		puts(readBuffer);
 	}
 
 	// Return 1 to indicate we should move onto the next input file/stdin
