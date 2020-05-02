@@ -1156,15 +1156,19 @@ export class Generator {
 	}
 
 	private typeDereference(type: string):null|string {
-		if (type.length==0)
-			return null;
-
 		// Not even a pointer type? If so cannot dereference
-		if (type[type.length-1]!='*')
+		if (!this.typeIsPointer(type))
 			return null;
 
 		// Strip final '*' off to reduce indirection by one level
 		return type.substring(0, type.length-1);
+	}
+
+	private typeIsPointer(type: string):boolean {
+		if (type.length==0)
+			return false;
+
+		return (type[type.length-1]=='*');
 	}
 
 	public printError(message: string, token:null|Token) {
