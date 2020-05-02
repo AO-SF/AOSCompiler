@@ -48,6 +48,30 @@ uint8_t runFd(uint8_t fd, uint8_t interactiveMode) {
 // Library functions
 ////////////////////////////////////////////////////////////////////////////////
 
+// reads up to and including first newline, always null-terminates buf (potentially to be 0 length if could not read)
+// returns number of bytes read
+uint16_t fgets(uint8_t fd, uint16_t offset, uint8_t *buf, uint16_t len) {
+	// Use fgets library function
+	asm "requireend lib/std/io/fget.s";
+
+	// Setup arguments and make call
+	asm "$fd\nload8 r0 r0\npush8 r0";
+	asm "$offset\ndec r0\nload16 r0 r0\npush16 r0";
+	asm "$buf\ndec3 r0\nload16 r0 r0\npush16 r0";
+	asm "$len\ndec5 r0\nload16 r3 r0";
+	asm "pop16 r2\npop16 r1\npop8 r0";
+	asm "call fgets";
+
+	// Handle return value
+	uint16_t readCount;
+	asm "push16 r0";
+	asm "$readCount\ndec2 r0";
+	asm "pop16 r1";
+	asm "store16 r0 r1";
+
+	return readCount;
+}
+
 void puts(uint8_t *str) {
 	// Use puts0 library function
 	asm "requireend lib/std/io/fput.s";
