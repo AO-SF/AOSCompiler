@@ -57,18 +57,23 @@ export class Generator {
 					return false;
 				}
 
-				// Grab type
+				// Grab type and compute size (do this before we adjust type for array)
 				let type='';
 				for(let i=0; i<node.children[1].tokens.length; ++i)
 					type+=node.children[1].tokens[i].text;
 
-				// Determine size of variable in memory based on type
-				let varEntrySize=this.typeToSize(type);
-				let varEntryCount=1;
-				let varTotalSize=varEntrySize*varEntryCount;
+				let typeSize=this.typeToSize(type);
+
+				// Array? Grab entryCount and update type
+				let entryCount=1;
+				if (node.tokens.length==1) {
+					entryCount=parseInt(node.tokens[0].text);
+					type+='[]';
+				}
 
 				// Define this name by adding it to list of variables in this scope
-				this.currentScope.addVariable(name, node.id, nameNode.tokens[0], type, varTotalSize);
+				let totalSize=entryCount*typeSize;
+				this.currentScope.addVariable(name, node.id, nameNode.tokens[0], type, typeSize, totalSize);
 
 				return true;
 			} break;
@@ -123,13 +128,16 @@ export class Generator {
 					for(let i=0; i<argumentTypeNode.tokens.length; ++i)
 						argumentType+=argumentTypeNode.tokens[i].text;
 
+					// Check for array definition (not allowed in function arguments as would reduce to a pointer anyway)
+					// TODO: this
+
 					// Determine size of variable in memory based on type
-					let argumentEntrySize=this.typeToSize(argumentType);
+					let argumentTypeSize=this.typeToSize(argumentType);
 					let argumentEntryCount=1;
-					let argumentTotalSize=argumentEntrySize*argumentEntryCount;
+					let argumentTotalSize=argumentTypeSize*argumentEntryCount;
 
 					// Add argument to current (function) scope
-					this.currentScope.addArgument(argumentName, variableDefinitionNode.id, argumentNameNode.tokens[0], argumentType, argumentTotalSize);
+					this.currentScope.addArgument(argumentName, variableDefinitionNode.id, argumentNameNode.tokens[0], argumentType, argumentTypeSize, argumentTotalSize);
 				}
 
 				return true;
@@ -651,10 +659,18 @@ export class Generator {
 				// Although this particular node type is never actually produced by the parser and so we do not need to handle it.
 			} break;
 			case AstNodeType.ExpressionAssignment: {
+				// TODO: handle ExpressionDereference as lhsNode for e.g. buf[x]=y
+
 				let output='';
 
 				let lhsNode=node.children[0];
 				let rhsNode=node.children[1];
+
+				// Check lhsNode is one of expected types.
+				if (lhsNode.type!=AstNodeType.ExpressionTerminal) {
+					this.printError('bad destination in assignment - expected literal', lhsNode.tokens[0]);
+					return null;
+				}
 
 				// Is the LHS even a registered variable?
 				let name=lhsNode.tokens[0].text;
@@ -671,6 +687,12 @@ export class Generator {
 
 				let lhsVariable=lhsSymbol as ScopeVariable;
 
+				// Ensure LHS is not an array
+				if (this.typeIsArray(lhsVariable.type)) {
+					this.printError('cannot use array symbol \''+name+'\' as destination in assignment', lhsNode.tokens[0]);
+					return null;
+				}
+
 				// Calculate RHS value and leave it in r0
 				let rhsOutput=this.generateNodePassCode(rhsNode);
 				if (rhsOutput===null)
@@ -685,14 +707,14 @@ export class Generator {
 				output+='pop16 r1\n';
 
 				// Store logic (address is in r0, RHS value is in r1)
-				if (lhsVariable.totalSize==1)
-					output+='store8 r0 r1\n';
-				else if (lhsVariable.totalSize==2)
-					output+='store16 r0 r1\n';
-				else {
-					// TODO: this
-					this.printError('internal error - unimplemented large-variable logic (assignment)', lhsNode.tokens[0]);
-					return null;
+				switch(lhsVariable.typeSize) {
+					case 1: output+='store8 r0 r1\n'; break;
+					case 2: output+='store16 r0 r1\n'; break;
+					default:
+						// TODO: this
+						this.printError('internal error - unimplemented large-variable logic (assignment)', lhsNode.tokens[0]);
+						return null;
+					break;
 				}
 
 				return output;
@@ -899,18 +921,18 @@ export class Generator {
 						return null;
 					}
 
-					if (expectedArgument.totalSize==1)
-						output+='push8 r0\n';
-					else if (expectedArgument.totalSize==2)
-						output+='push16 r0\n';
-					else {
-						// TODO: this
-						this.printError('internal error - unimplemented large-variable logic (calling function \''+func.name+'\')', node.children[i].tokens[0]);
-						return null;
+					switch(expectedArgument.typeSize) {
+						case 1: output+='push8 r0\n'; break;
+						case 2: output+='push16 r0\n'; break;
+						default:
+							// TODO: this
+							this.printError('internal error - unimplemented large-variable logic (calling function \''+func.name+'\')', node.children[i].tokens[0]);
+							return null;
+						break;
 					}
 
-					this.globalStackAdjustment+=expectedArgument.totalSize;
-					asmArgumentStackAdjustment+=expectedArgument.totalSize;
+					this.globalStackAdjustment+=expectedArgument.typeSize;
+					asmArgumentStackAdjustment+=expectedArgument.typeSize;
 				}
 
 				this.globalStackAdjustment-=asmArgumentStackAdjustment;
@@ -949,7 +971,7 @@ export class Generator {
 
 				let dereferencedType=this.typeDereference(storageSymbol.type);
 				if (dereferencedType===null) {
-					this.printError('bad dereference - symbol \''+ptrName+'\' is not a pointer', node.tokens[0]);
+					this.printError('bad dereference - symbol \''+ptrName+'\' is not a pointer or an array', node.tokens[0]);
 					return null;
 				}
 
@@ -1085,12 +1107,16 @@ export class Generator {
 		output+=outputAddress;
 
 		// Generate loading code (address is in r0 from previous step)
-		if (storageSymbol.totalSize==1)
-			output+='load8 r0 r0\n';
-		else if (storageSymbol.totalSize==2)
-			output+='load16 r0 r0\n';
-		else
-			return null;
+		// Note: we skip this for arrays as their base address is their value when used in an expression
+		if (!this.typeIsArray(storageSymbol.type)) {
+			switch(storageSymbol.typeSize) {
+				case 1: output+='load8 r0 r0\n'; break;
+				case 2: output+='load16 r0 r0\n'; break;
+				default:
+					return null;
+				break;
+			}
+		}
 
 		return output;
 	}
@@ -1145,23 +1171,32 @@ export class Generator {
 		if (type.length==0)
 			return 0;
 
-		if (type[type.length-1]=='*')
-			return 2; // pointers are always 16 bit
-		else if (type=='uint8_t')
+		if (this.typeIsPointer(type) || this.typeIsArray(type))
+			return 2;
+
+		if (type=='uint8_t')
 			return 1;
 		else if (type=='uint16_t')
 			return 2;
-		else
-			return 0;
+
+		return 0;
 	}
 
 	private typeDereference(type: string):null|string {
-		// Not even a pointer type? If so cannot dereference
-		if (!this.typeIsPointer(type))
-			return null;
+		// Pointer type?
+		if (this.typeIsPointer(type)) {
+			// Strip final '*' off to reduce indirection by one level
+			return type.substring(0, type.length-1);
+		}
 
-		// Strip final '*' off to reduce indirection by one level
-		return type.substring(0, type.length-1);
+		// Array type?
+		if (this.typeIsArray(type)) {
+			// Strip final '[]' off to reduce indirection by one level
+			return type.substring(0, type.length-2);
+		}
+
+		// Otherwise cannot dereference
+		return null;
 	}
 
 	private typeIsPointer(type: string):boolean {
@@ -1169,6 +1204,13 @@ export class Generator {
 			return false;
 
 		return (type[type.length-1]=='*');
+	}
+
+	private typeIsArray(type: string):boolean {
+		if (type.length<2)
+			return false;
+
+		return (type.substring(type.length-2)=='[]');
 	}
 
 	public printError(message: string, token:null|Token) {

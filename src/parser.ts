@@ -91,6 +91,21 @@ export class Parser {
 					}
 				break;
 				case AstNodeType.VariableDefinition:
+					// Open square bracket to indicate array definition?
+					if (token.text=='[') {
+						// Peek at next token - must be a number
+						if (input.length>0 && Parser.strIsNumber(input[0].text)) {
+							currNode.tokens.push(input.shift()!);
+
+							// Peek at next token - must be a closing square bracket
+							if (input.length>0 && input[0].text==']') {
+								input.shift();
+
+								continue;
+							}
+						}
+					}
+
 					// Require a comma, semicolon or open/close parenthesis to terminate
 					if (token.text==',' || token.text==';' || token.text=='(' || token.text==')') {
 						this.nodeStackPop();

@@ -11,7 +11,7 @@ export class ScopeSymbol {
 }
 
 export class ScopeStorageSymbol extends ScopeSymbol {
-	public constructor(scope: Scope, name:string, mangledName:string, definitionToken: Token, public type:string, public totalSize:number) {
+	public constructor(scope: Scope, name:string, mangledName:string, definitionToken: Token, public type:string, public typeSize:number, public totalSize:number) {
 		super(scope, name, mangledName, definitionToken);
 	}
 
@@ -24,8 +24,8 @@ export class ScopeStorageSymbol extends ScopeSymbol {
 }
 
 export class ScopeVariable extends ScopeStorageSymbol {
-	public constructor(scope: Scope, name:string, mangledName:string, definitionToken: Token, type:string, totalSize:number) {
-		super(scope, name, mangledName, definitionToken, type, totalSize);
+	public constructor(scope: Scope, name:string, mangledName:string, definitionToken: Token, type:string, typeSize:number, totalSize:number) {
+		super(scope, name, mangledName, definitionToken, type, typeSize, totalSize);
 	}
 
 	// For global variables, returns 0.
@@ -100,8 +100,8 @@ export class ScopeFunction extends ScopeSymbol {
 }
 
 export class ScopeArgument extends ScopeStorageSymbol {
-	public constructor(scope: Scope, name:string, mangledName:string, definitionToken: Token, type:string, totalSize:number) {
-		super(scope, name, mangledName, definitionToken, type, totalSize);
+	public constructor(scope: Scope, name:string, mangledName:string, definitionToken: Token, type:string, typeSize:number, totalSize:number) {
+		super(scope, name, mangledName, definitionToken, type, typeSize, totalSize);
 	}
 
 	// Returns offset of this argument in the stack space allocated to arguments
@@ -256,9 +256,9 @@ export class Scope {
 		return null;
 	}
 
-	public addVariable(name:string, id:number, definitionToken:Token, type:string, totalSize:number):ScopeVariable {
+	public addVariable(name:string, id:number, definitionToken:Token, type:string, typeSize:number, totalSize:number):ScopeVariable {
 		let mangledName=this.genNewSymbolMangledName(id)+'_variable_'+Generator.escapeName(name);
-		let variable=new ScopeVariable(this, name, mangledName, definitionToken, type, totalSize);
+		let variable=new ScopeVariable(this, name, mangledName, definitionToken, type, typeSize, totalSize);
 		this.symbols.push(variable);
 		return variable;
 	}
@@ -270,9 +270,9 @@ export class Scope {
 		return func;
 	}
 
-	public addArgument(name:string, id:number, definitionToken:Token, type:string, totalSize:number):ScopeArgument {
+	public addArgument(name:string, id:number, definitionToken:Token, type:string, typeSize:number, totalSize:number):ScopeArgument {
 		let mangledName=this.genNewSymbolMangledName(id)+'_argument_'+Generator.escapeName(name);
-		let arg=new ScopeArgument(this, name, mangledName, definitionToken, type, totalSize);
+		let arg=new ScopeArgument(this, name, mangledName, definitionToken, type, typeSize, totalSize);
 		this.symbols.push(arg);
 		return arg;
 	}
