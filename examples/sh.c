@@ -84,7 +84,7 @@ uint8_t runFd(uint8_t fd, uint8_t interactiveMode) {
 		forkRet=fork();
 
 		if (forkRet==16) { // PidMax=16
-			puts("could not fork");
+			puts("could not fork\n");
 
 			// in interactiveMode let user try again, but if part of a file we cannot continue as this command may be critical
 			if (interactiveMode) {
@@ -105,6 +105,10 @@ uint8_t runFd(uint8_t fd, uint8_t interactiveMode) {
 
 			// use exec syscall to replace process
 			exec(argc, readBuffer, 1);
+
+			// exec only returns on error
+			puts("could not exec\n");
+			exit(1);
 		}
 	}
 
