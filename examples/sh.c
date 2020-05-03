@@ -123,10 +123,8 @@ void exit(uint16_t status) {
 // reads up to and including first newline, always null-terminates buf (potentially to be 0 length if could not read)
 // returns number of bytes read
 uint16_t fgets(uint8_t fd, uint16_t offset, uint8_t *buf, uint16_t len) {
-	// Use fgets library function
 	asm "requireend lib/std/io/fget.s";
 
-	// Setup arguments and make call
 	asm "$fd\nload8 r0 r0\npush8 r0";
 	asm "$offset\ndec r0\nload16 r0 r0\npush16 r0";
 	asm "$buf\ndec3 r0\nload16 r0 r0\npush16 r0";
@@ -134,7 +132,6 @@ uint16_t fgets(uint8_t fd, uint16_t offset, uint8_t *buf, uint16_t len) {
 	asm "pop16 r2\npop16 r1\npop8 r0";
 	asm "call fgets";
 
-	// Handle return value
 	uint16_t readCount;
 	asm "push16 r0";
 	asm "$readCount\ndec2 r0";
@@ -145,26 +142,21 @@ uint16_t fgets(uint8_t fd, uint16_t offset, uint8_t *buf, uint16_t len) {
 }
 
 void puts(uint8_t *str) {
-	// Use puts0 library function
 	asm "requireend lib/std/io/fput.s";
 	asm "$str\nload16 r0 r0\ncall puts0";
 }
 
 uint8_t openPath(uint8_t *path, uint8_t mode) {
-	// Use openpath library function
 	asm "requireend lib/std/proc/openpath.s";
 
-	// Setup arguments
 	asm "$path\nload16 r0 r0\npush16 r0";
-	asm "$mode\ndec2 r0\nload8 r1 r0\npop16 r0"; // dec2 is because we adjusted stack in previous asm code
+	asm "$mode\ndec2 r0\nload8 r1 r0\npop16 r0";
 
-	// Call function
 	asm "call openpath";
 
-	// Grab returned fd
 	uint8_t fd;
 	asm "push8 r0";
-	asm "$fd\ndec r0"; // dec is because we adjusted stack in previous asm code
+	asm "$fd\ndec r0";
 	asm "pop8 r1";
 	asm "store8 r0 r1";
 
@@ -183,7 +175,7 @@ uint8_t *getPwd() {
 
 	uint8_t *pwd;
 	asm "push16 r0";
-	asm "$pwd\ndec2 r0"; // dec2 is because we adjusted stack in previous asm code
+	asm "$pwd\ndec2 r0";
 	asm "pop16 r1";
 	asm "store16 r0 r1";
 
