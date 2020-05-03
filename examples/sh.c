@@ -75,7 +75,9 @@ uint8_t runFd(uint8_t fd, uint8_t interactiveMode) {
 		}
 
 		// Check for builtin command
-		// TODO: this
+		if (strcmp(readBuffer, "exit")==0) {
+			return 0;
+		}
 
 		// Fork
 		uint8_t forkRet;
