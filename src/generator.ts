@@ -13,8 +13,10 @@ export class Generator {
 
 	public generate(rootNode: AstNode):null | string {
 		// Check we have been given a full AST starting from the root
-		if (rootNode.type!=AstNodeType.Root || rootNode.parent!==null)
+		if (rootNode.type!=AstNodeType.Root || rootNode.parent!==null) {
+			this.printError('Could not generate: bad root node', null);
 			return null;
+		}
 
 		// Reset state
 		this.globalScope=new Scope('global', null, false);
@@ -765,7 +767,10 @@ export class Generator {
 				switch(node.tokens[0].text) {
 					case '==': output+='skipeq r5\n'; break;
 					case '!=': output+='skipneq r5\n'; break;
-					default: return null; break; // TODO: add error message probably
+					default:
+						this.printError('bad comparison operator \''+node.tokens[0].text+'\' (equality)', node.tokens[0]);
+						return null;
+					break;
 				}
 				output+='mov r0 0\n';
 
@@ -800,8 +805,11 @@ export class Generator {
 					case '<': output+='skiplt r5\n'; break;
 					case '<=': output+='skiple r5\n'; break;
 					case '>': output+='skipgt r5\n'; break;
-					case '<=': output+='skipge r5\n'; break;
-					default: return null; break; // TODO: add error message probably
+					case '>=': output+='skipge r5\n'; break;
+					default:
+						this.printError('bad comparison operator \''+node.tokens[0].text+'\' (inequality)', node.tokens[0]);
+						return null;
+					break;
 				}
 				output+='mov r0 0\n';
 
