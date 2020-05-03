@@ -969,51 +969,14 @@ export class Generator {
 
 				let storageSymbol=symbol as ScopeStorageSymbol;
 
-				let dereferencedType=this.typeDereference(storageSymbol.type);
-				if (dereferencedType===null) {
-					this.printError('bad dereference - symbol \''+ptrName+'\' is not a pointer or an array', node.tokens[0]);
+				// Generate code to place relevant array entry address into r0
+				let outputAddress=this.generateDereferenceAddress(storageSymbol, node.tokens[0], node.children[0]);
+				if (outputAddress===null)
 					return null;
-				}
-
-				// Generate code for expression within square brackets, and protect it by placing onto the stack
-				let expressionCode=this.generateNodePassCode(node.children[0]);
-				if (expressionCode===null)
-					return null;
-				output+=expressionCode;
-
-				output+='push16 r0\n';
-				this.globalStackAdjustment+=2;
-
-				// Generate code to load pointer base address into r0
-				let baseAddressCode=this.generateSymbolValue(storageSymbol);
-				if (baseAddressCode===null) {
-					// TODO: if we make versions of functions like generateSymbolValue which accept ScopeStorageSymbol instead then won't have to worry about null
-					this.printError('bad dereference - internal error', node.tokens[0]);
-					return null;
-				}
-				output+=baseAddressCode;
-
-				// Compute true address by taking the base address and adding the offset (suitably multiplied), and store into r0
-				output+='pop16 r1\n'; // restore expression value
-				this.globalStackAdjustment-=2;
-
-				switch(this.typeToSize(dereferencedType)) {
-					case 1:
-						output+='add r0 r0 r1\n';
-					break;
-					case 2:
-						// easier to add twice rather than try to multiply then add
-						output+='add r0 r0 r1\n';
-						output+='add r0 r0 r1\n';
-					break;
-					default:
-						// TODO: this
-						this.printError('internal error - unimplemented large-variable logic (dereference)', node.tokens[0]);
-						return null;
-					break;
-				}
+				output+=outputAddress;
 
 				// Generate code to actually do the dereferencing by doing a load operation
+				let dereferencedType=this.typeDereference(storageSymbol.type)!; // ! is safe as above function would have failed otherwise
 				switch(this.typeToSize(dereferencedType)) {
 					case 1:
 						output+='load8 r0 r0\n';
@@ -1158,6 +1121,58 @@ export class Generator {
 		} else {
 			output+='mov r0 '+stackAdjustment+'\n';
 			output+='sub r0 r6 r0\n';
+		}
+
+		return output;
+	}
+
+	// This returns a string containing asm code which will move the address of the array entry as indicated by the index calculated from expressionNode
+	private generateDereferenceAddress(pointerSymbol:ScopeStorageSymbol, pointerToken:Token, expressionNode:AstNode):null|string {
+		let output='';
+
+		// Dereference the pointer type
+		let dereferencedType=this.typeDereference(pointerSymbol.type);
+		if (dereferencedType===null) {
+			this.printError('bad dereference - symbol \''+pointerToken.text+'\' is not a pointer or an array', pointerToken);
+			return null;
+		}
+
+		// Generate code for expression within square brackets, and protect it by placing onto the stack
+		let expressionCode=this.generateNodePassCode(expressionNode);
+		if (expressionCode===null)
+			return null;
+		output+=expressionCode;
+
+		output+='push16 r0\n';
+		this.globalStackAdjustment+=2;
+
+		// Generate code to load pointer base address into r0
+		let baseAddressCode=this.generateSymbolValue(pointerSymbol);
+		if (baseAddressCode===null) {
+			// TODO: if we make versions of functions like generateSymbolValue which accept ScopeStorageSymbol instead then won't have to worry about null
+			this.printError('bad dereference - internal error', pointerToken);
+			return null;
+		}
+		output+=baseAddressCode;
+
+		// Compute true address by taking the base address and adding the offset (suitably multiplied), and store into r0
+		this.globalStackAdjustment-=2;
+		output+='pop16 r1\n'; // restore expression value
+
+		switch(this.typeToSize(dereferencedType)) {
+			case 1:
+				output+='add r0 r0 r1\n';
+			break;
+			case 2:
+				// easier to add twice rather than try to multiply then add
+				output+='add r0 r0 r1\n';
+				output+='add r0 r0 r1\n';
+			break;
+			default:
+				// TODO: this
+				this.printError('internal error - unimplemented large-variable logic (dereference)', pointerToken);
+				return null;
+			break;
 		}
 
 		return output;
