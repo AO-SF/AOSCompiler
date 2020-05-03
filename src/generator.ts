@@ -659,16 +659,14 @@ export class Generator {
 				// Although this particular node type is never actually produced by the parser and so we do not need to handle it.
 			} break;
 			case AstNodeType.ExpressionAssignment: {
-				// TODO: handle ExpressionDereference as lhsNode for e.g. buf[x]=y
-
 				let output='';
 
 				let lhsNode=node.children[0];
 				let rhsNode=node.children[1];
 
 				// Check lhsNode is one of expected types.
-				if (lhsNode.type!=AstNodeType.ExpressionTerminal) {
-					this.printError('bad destination in assignment - expected literal', lhsNode.tokens[0]);
+				if (lhsNode.type!=AstNodeType.ExpressionTerminal && lhsNode.type!=AstNodeType.ExpressionDereference) {
+					this.printError('bad destination in assignment - expected literal or pointer/array dereference', lhsNode.tokens[0]);
 					return null;
 				}
 
@@ -680,34 +678,54 @@ export class Generator {
 					return null;
 				}
 
-				if (!(lhsSymbol instanceof ScopeVariable)) {
+				if (!(lhsSymbol instanceof ScopeStorageSymbol)) {
 					this.printError('cannot use non-variable symbol \''+name+'\' as destination in assignment', lhsNode.tokens[0]);
 					return null;
 				}
 
-				let lhsVariable=lhsSymbol as ScopeVariable;
+				let lhsStorageSymbol=lhsSymbol as ScopeVariable;
 
-				// Ensure LHS is not an array
-				if (this.typeIsArray(lhsVariable.type)) {
-					this.printError('cannot use array symbol \''+name+'\' as destination in assignment', lhsNode.tokens[0]);
-					return null;
-				}
-
-				// Calculate RHS value and leave it in r0
+				// Calculate RHS value and push onto stack
 				let rhsOutput=this.generateNodePassCode(rhsNode);
 				if (rhsOutput===null)
 					return null;
 				output+=rhsOutput;
 
-				// Place address of variable into r0 (while moving RHS value into r1)
 				output+='push16 r0\n';
 				this.globalStackAdjustment+=2;
-				output+=this.generateVariableAddress(lhsVariable);
+
+				// Node-type specific code to place destination address into r0
+				let storeSize=0;
+				if (lhsNode.type==AstNodeType.ExpressionTerminal) {
+					// Ensure LHS is not an array
+					if (this.typeIsArray(lhsStorageSymbol.type)) {
+						this.printError('cannot use array symbol \''+name+'\' as destination in assignment', lhsNode.tokens[0]);
+						return null;
+					}
+
+					// Place desination address into r0
+					output+=this.generateVariableAddress(lhsStorageSymbol);
+
+					// Storage size is simply the size of the variable type
+					storeSize=lhsStorageSymbol.typeSize;
+				} else {
+					// lhsNode.type==AstNodeType.ExpressionDereference
+
+					// Generate code to place relevant array entry address into r0
+					let outputAddress=this.generateDereferenceAddress(lhsStorageSymbol, lhsNode.tokens[0], lhsNode.children[0]);
+					if (outputAddress===null)
+						return null;
+					output+=outputAddress;
+
+					// Dereference type to find size to copy
+					storeSize=this.typeToSize(this.typeDereference(lhsStorageSymbol.type)!); // ! is safe as otherwise above function would have failed
+				}
+
+				// Store logic (address is in r0, pop RHS value off stack into r1)
 				this.globalStackAdjustment-=2;
 				output+='pop16 r1\n';
 
-				// Store logic (address is in r0, RHS value is in r1)
-				switch(lhsVariable.typeSize) {
+				switch(storeSize) {
 					case 1: output+='store8 r0 r1\n'; break;
 					case 2: output+='store16 r0 r1\n'; break;
 					default:
