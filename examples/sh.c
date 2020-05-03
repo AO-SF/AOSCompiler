@@ -33,6 +33,8 @@ uint8_t runFd(uint8_t fd, uint8_t interactiveMode) {
 	uint16_t readOffset;
 	readOffset=0;
 	while(1) {
+		uint8_t *ptr;
+
 		// If in interactive mode then print a prompt consisting of pwd and dollar character
 		if (interactiveMode) {
 			puts(getPwd());
@@ -47,8 +49,61 @@ uint8_t runFd(uint8_t fd, uint8_t interactiveMode) {
 			break; // end of file
 		}
 
-		// TODO: rest of this (for now simply echo input back to user)
-		puts(readBuffer);
+		readOffset=readOffset+readCount;
+
+		// Remove trailing newline (if any)
+		if (readBuffer[readCount-1]==10) {
+			readBuffer[readCount-1]=0;
+			readCount=readCount-1;
+		}
+
+		// Remove trailing comment (if any)
+		ptr=strchr(readBuffer, 35); // '#'
+		if (ptr!=0) {
+			ptr[0] = 0;
+		}
+
+		// Compute argc by looping over input looking for spaces as separators
+		// Genereate argv string by replacing the spaces with null terminators
+		uint8_t argc;
+		argc=1;
+		for(ptr=readBuffer; ptr[0]!=0; ptr=ptr+1) {
+			if (ptr[0]==32) { // space
+				ptr[0]=0;
+				argc=argc+1;
+			}
+		}
+
+		// Check for builtin command
+		// TODO: this
+
+		// Fork
+		uint8_t forkRet;
+		forkRet=fork();
+
+		if (forkRet==16) { // PidMax=16
+			puts("could not fork");
+
+			// in interactiveMode let user try again, but if part of a file we cannot continue as this command may be critical
+			if (interactiveMode) {
+				continue;
+			}
+			return 1;
+		}
+
+		if (forkRet>0) {
+			// parent - forkRet is equal to child's PID
+
+			// wait for child to terminate
+			waitpid(forkRet, 0); // timeout=0 for infinite wait
+		}
+
+		if (forkRet==0) {
+			// child
+
+			// use exec syscall to replace process
+			exec(argc, readBuffer, 1);
+		}
 	}
 
 	// Return 1 to indicate we should move onto the next input file/stdin
