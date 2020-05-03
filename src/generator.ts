@@ -265,14 +265,14 @@ export class Generator {
 				let outputStart='';
 				outputStart+='; Setup argc and argv then call main and handle exit status once returns\n';
 
-				outputStart+='mov r3 r6 ; save start of stack-based array to use as argv argument\n';
+				outputStart+='mov r2 r6 ; save start of stack-based array to use as argv argument\n';
 				outputStart+='mov r1 0 ; argv loop index\n';
 				outputStart+='label argvLoopStart\n';
 
 				outputStart+='mov r0 SyscallIdArgvN\n';
 				outputStart+='syscall\n';
-				outputStart+='cmp r2 r0 r0\n';
-				outputStart+='skipneqz r2\n';
+				outputStart+='cmp r5 r0 r0\n';
+				outputStart+='skipneqz r5\n';
 				outputStart+='jmp argvLoopEnd\n';
 
 				outputStart+='push16 r0 ; add to stack-based argv array\n';
@@ -283,7 +283,7 @@ export class Generator {
 				outputStart+='mov r0 SyscallIdArgc ; grab argc\n';
 				outputStart+='syscall\n';
 				outputStart+='push8 r0 ; push argc\n';
-				outputStart+='push16 r3 ; push argv\n';
+				outputStart+='push16 r2 ; push argv\n';
 
 				let mainFunction=this.currentScope.getSymbolByName('main');
 				if (mainFunction===null || !(mainFunction instanceof ScopeFunction)) {
@@ -721,13 +721,13 @@ export class Generator {
 					storeSize=this.typeToSize(this.typeDereference(lhsStorageSymbol.type)!); // ! is safe as otherwise above function would have failed
 				}
 
-				// Store logic (address is in r0, pop RHS value off stack into r1)
+				// Store logic (address is in r0, pop RHS value off stack into r5)
 				this.globalStackAdjustment-=2;
-				output+='pop16 r1\n';
+				output+='pop16 r5\n';
 
 				switch(storeSize) {
-					case 1: output+='store8 r0 r1\n'; break;
-					case 2: output+='store16 r0 r1\n'; break;
+					case 1: output+='store8 r0 r5\n'; break;
+					case 2: output+='store16 r0 r5\n'; break;
 					default:
 						// TODO: this
 						this.printError('internal error - unimplemented large-variable logic (assignment)', lhsNode.tokens[0]);
@@ -749,22 +749,22 @@ export class Generator {
 				output+='push16 r0\n';
 				this.globalStackAdjustment+=2;
 
-				// Generate RHS code and save value into r1
+				// Generate RHS code and save value into r5
 				let rhsOutput=this.generateNodePassCode(node.children[1]);
 				if (rhsOutput===null)
 					return null;
 
 				output+=rhsOutput;
-				output+='mov r1 r0\n';
+				output+='mov r5 r0\n';
 
 				// Compare code
 				this.globalStackAdjustment-=2;
 				output+='pop16 r0\n';
-				output+='cmp r1 r0 r1\n';
+				output+='cmp r5 r0 r5\n';
 				output+='mov r0 1\n';
 				switch(node.tokens[0].text) {
-					case '==': output+='skipeq r1\n'; break;
-					case '!=': output+='skipneq r1\n'; break;
+					case '==': output+='skipeq r5\n'; break;
+					case '!=': output+='skipneq r5\n'; break;
 					default: return null; break; // TODO: add error message probably
 				}
 				output+='mov r0 0\n';
@@ -783,24 +783,24 @@ export class Generator {
 				output+='push16 r0\n';
 				this.globalStackAdjustment+=2;
 
-				// Generate RHS code and save value into r1
+				// Generate RHS code and save value into r5
 				let rhsOutput=this.generateNodePassCode(node.children[1]);
 				if (rhsOutput===null)
 					return null;
 
 				output+=rhsOutput;
-				output+='mov r1 r0\n';
+				output+='mov r5 r0\n';
 
 				// Compare code
 				this.globalStackAdjustment-=2;
 				output+='pop16 r0\n';
-				output+='cmp r1 r0 r1\n';
+				output+='cmp r5 r0 r5\n';
 				output+='mov r0 1\n';
 				switch(node.tokens[0].text) {
-					case '<': output+='skiplt r1\n'; break;
-					case '<=': output+='skiple r1\n'; break;
-					case '>': output+='skipgt r1\n'; break;
-					case '<=': output+='skipge r1\n'; break;
+					case '<': output+='skiplt r5\n'; break;
+					case '<=': output+='skiple r5\n'; break;
+					case '>': output+='skipgt r5\n'; break;
+					case '<=': output+='skipge r5\n'; break;
 					default: return null; break; // TODO: add error message probably
 				}
 				output+='mov r0 0\n';
@@ -821,21 +821,21 @@ export class Generator {
 
 				// Loop over rest of the operands
 				for(let i=0; i<node.tokens.length; ++i) {
-					// Generate this operands code and place value in r1
+					// Generate this operands code and place value in r5
 					let loopOutput=this.generateNodePassCode(node.children[i+1]);
 					if (loopOutput===null)
 						return null;
 
 					output+=loopOutput;
-					output+='mov r1 r0\n';
+					output+='mov r5 r0\n';
 
 					// Execute operation
 					this.globalStackAdjustment-=2;
 					output+='pop16 r0\n'; // restore previous operand
 					if (node.tokens[i].text=='+')
-						output+='add r0 r0 r1\n';
+						output+='add r0 r0 r5\n';
 					else if (node.tokens[i].text=='-')
-						output+='sub r0 r0 r1\n';
+						output+='sub r0 r0 r5\n';
 					output+='push16 r0\n'; // save result ready to act as next operand
 					this.globalStackAdjustment+=2;
 				}
@@ -860,21 +860,21 @@ export class Generator {
 
 				// Loop over rest of the operands
 				for(let i=0; i<node.tokens.length; ++i) {
-					// Generate this operands code and place value in r1
+					// Generate this operands code and place value in r5
 					let loopOutput=this.generateNodePassCode(node.children[i+1]);
 					if (loopOutput===null)
 						return null;
 
 					output+=loopOutput;
-					output+='mov r1 r0\n';
+					output+='mov r5 r0\n';
 
 					// Execute operation
 					this.globalStackAdjustment-=2;
 					output+='pop16 r0\n'; // restore previous operand
 					if (node.tokens[i].text=='*')
-						output+='mul r0 r0 r1\n';
+						output+='mul r0 r0 r5\n';
 					else if (node.tokens[i].text=='/')
-						output+='div r0 r0 r1\n';
+						output+='div r0 r0 r5\n';
 					output+='push16 r0\n'; // save result ready to act as next operand
 					this.globalStackAdjustment+=2;
 				}
@@ -960,8 +960,8 @@ export class Generator {
 
 				// Add instruction to restore stack after pushing arguments (if any)
 				if (asmArgumentStackAdjustment>64) {
-					output+='mov r1 '+asmArgumentStackAdjustment+'\n';
-					output+='sub r6 r6 r1\n';
+					output+='mov r5 '+asmArgumentStackAdjustment+'\n';
+					output+='sub r6 r6 r5\n';
 				} else if (asmArgumentStackAdjustment>0) {
 					output+='dec'+asmArgumentStackAdjustment+' r6\n';
 				}
@@ -1175,16 +1175,16 @@ export class Generator {
 
 		// Compute true address by taking the base address and adding the offset (suitably multiplied), and store into r0
 		this.globalStackAdjustment-=2;
-		output+='pop16 r1\n'; // restore expression value
+		output+='pop16 r5\n'; // restore expression value
 
 		switch(this.typeToSize(dereferencedType)) {
 			case 1:
-				output+='add r0 r0 r1\n';
+				output+='add r0 r0 r5\n';
 			break;
 			case 2:
 				// easier to add twice rather than try to multiply then add
-				output+='add r0 r0 r1\n';
-				output+='add r0 r0 r1\n';
+				output+='add r0 r0 r5\n';
+				output+='add r0 r0 r5\n';
 			break;
 			default:
 				// TODO: this
