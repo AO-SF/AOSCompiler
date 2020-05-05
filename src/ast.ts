@@ -64,6 +64,14 @@ export class AstNode {
 		for(let i=0; i<this.tokens.length; ++i)
 			str+=' '+this.tokens[i].text;
 
+		// Add location information (if any)
+		if (this.tokens.length>0) {
+			let x=80;
+			if (str.length<x)
+				str+=' '.repeat(x-str.length);
+			str+=' ('+this.tokens[0].location.toString()+')';
+		}
+
 		// Write out string
 		console.log(str);
 
