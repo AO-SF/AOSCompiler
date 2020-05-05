@@ -1,3 +1,7 @@
+#include "lib/stdio.c"
+#include "lib/string.c"
+#include "lib/process.c"
+
 uint8_t readBuffer[256]; // this is global as otherwise makes stack calculations more difficult/slower in runFd
 
 uint16_t main(uint8_t argc, uint8_t **argv) {
@@ -120,46 +124,6 @@ uint8_t runFd(uint8_t fd, uint8_t interactiveMode) {
 // Library functions
 ////////////////////////////////////////////////////////////////////////////////
 
-void exit(uint16_t status) {
-	asm "$status\nload16 r1 r0";
-	asm "mov r0 SyscallIdExit";
-	asm "syscall";
-}
-
-// reads up to and including first newline, always null-terminates buf (potentially to be 0 length if could not read)
-// returns number of bytes read
-uint16_t fgets(uint8_t fd, uint16_t offset, uint8_t *buf, uint16_t len) {
-	asm "requireend lib/std/io/fget.s";
-
-	asm "$fd\nload8 r0 r0\npush8 r0";
-	asm "$offset\ndec r0\nload16 r0 r0\npush16 r0";
-	asm "$buf\ndec3 r0\nload16 r0 r0\npush16 r0";
-	asm "$len\ndec5 r0\nload16 r3 r0";
-	asm "pop16 r2\npop16 r1\npop8 r0";
-	asm "call fgets";
-
-	uint16_t readCount;
-	asm "push16 r0";
-	asm "$readCount\ndec2 r0";
-	asm "pop16 r1";
-	asm "store16 r0 r1";
-
-	return readCount;
-}
-
-void puts(uint8_t *str) {
-	asm "requireend lib/std/io/fput.s";
-	asm "$str\nload16 r0 r0\ncall puts0";
-}
-
-void getAbsPath(uint8_t *dest, uint8_t *src) {
-	asm "requireend lib/std/proc/getabspath.s";
-	asm "$src\nload16 r0 r0\npush16 r0";
-	asm "$dest\ndec2 r0\nload16 r0 r0";
-	asm "pop16 r1";
-	asm "call getabspath";
-}
-
 uint8_t openPath(uint8_t *path, uint8_t mode) {
 	asm "requireend lib/std/proc/openpath.s";
 
@@ -181,110 +145,6 @@ void close(uint8_t fd) {
 	asm "$fd\nload8 r1 r0";
 	asm "mov r0 SyscallIdClose";
 	asm "syscall";
-}
-
-uint8_t *getPwd() {
-	asm "mov r0 SyscallIdEnvGetPwd";
-	asm "syscall";
-
-	uint8_t *pwd;
-	asm "push16 r0";
-	asm "$pwd\ndec2 r0";
-	asm "pop16 r1";
-	asm "store16 r0 r1";
-
-	return pwd;
-}
-
-void setPwd(uint8_t *pwd) {
-	asm "$pwd\nload16 r1 r0";
-	asm "mov r0 SyscallIdEnvSetPwd";
-	asm "syscall";
-}
-
-uint8_t *strchr(uint8_t *str, uint8_t c) {
-	asm "$c\nload8 r0 r0\npush8 r0";
-	asm "$str\ndec r0\nload16 r1 r0";
-	asm "pop8 r2";
-	asm "mov r0 SyscallIdStrChr";
-	asm "syscall";
-
-	uint8_t *ret;
-	asm "push16 r0";
-	asm "$ret\ndec2 r0";
-	asm "pop16 r1";
-	asm "store16 r0 r1";
-
-	return ret;
-}
-
-uint8_t fork() {
-	asm "mov r0 SyscallIdFork";
-	asm "syscall";
-
-	uint8_t ret;
-	asm "push8 r0";
-	asm "$ret\ndec r0";
-	asm "pop8 r1";
-	asm "store8 r0 r1";
-
-	return ret;
-}
-
-void waitpid(uint8_t pid, uint16_t timeoutSeconds) {
-	asm "$timeoutSeconds\nload16 r0 r0\npush16 r0";
-	asm "$pid\ndec2 r0\nload8 r1 r0";
-	asm "pop16 r2";
-	asm "mov r0 SyscallIdWaitPid";
-	asm "syscall";
-}
-
-void exec(uint8_t argc, uint8_t *argv, uint8_t searchFlag) {
-	asm "$searchFlag\nload8 r0 r0\npush8 r0";
-	asm "$argv\ndec1 r0\nload16 r0 r0\npush16 r0";
-	asm "$argc\ndec3 r0\nload8 r1 r0";
-	asm "pop16 r2";
-	asm "pop8 r3";
-	asm "mov r0 SyscallIdExec";
-	asm "syscall";
-}
-
-uint8_t strcmp(uint8_t *a, uint8_t *b) {
-	asm "$b\nload16 r0 r0\npush16 r0";
-	asm "$a\ndec2 r0\nload16 r1 r0";
-	asm "pop16 r2";
-
-	asm "mov r0 SyscallIdStrCmp";
-	asm "syscall";
-
-	uint8_t ret;
-	asm "push8 r0";
-	asm "$ret\ndec r0";
-	asm "pop8 r1";
-	asm "store8 r0 r1";
-
-	return ret;
-}
-
-void strcpy(uint8_t *dest, uint8_t *src) {
-	asm "requireend lib/std/str/strcpy.s";
-	asm "$src\nload16 r0 r0\npush16 r0";
-	asm "$dest\ndec2 r0\nload16 r0 r0\npop16 r1";
-	asm "call strcpy";
-}
-
-uint16_t strlen(uint8_t *str) {
-	asm "requireend lib/std/str/strlen.s";
-	asm "$str\nload16 r0 r0";
-	asm "call strlen";
-
-	uint16_t ret;
-	asm "push16 r0";
-	asm "$ret\ndec2 r0";
-	asm "pop16 r1";
-	asm "store16 r0 r1";
-
-	return ret;
 }
 
 uint8_t isDir(uint8_t *path) {

@@ -1,16 +1,6 @@
-// Print Fibonacci sequence
+// Print Fibonacci sequence (0, 1, 1, 2, 3, 5, ...)
 
-void putc(uint8_t c) {
-	// Use putc0 library function
-	asm "requireend lib/std/io/fput.s";
-	asm "$c\nload8 r0 r0\ncall putc0";
-}
-
-void putd(uint16_t x) {
-	// Print x using putdec library function
-	asm "requireend lib/std/io/fputdec.s";
-	asm "$x\nload16 r0 r0\ncall putdec";
-}
+#include "lib/stdio.c"
 
 uint16_t main(uint8_t argc, uint8_t **argv) {
 	// Initialise and print first value
@@ -25,8 +15,7 @@ uint16_t main(uint8_t argc, uint8_t **argv) {
 	// Loop to print subsequent values
 	while(lower<40000) {
 		// Print separator followed by value
-		putc(44); // ','
-		putc(32); // ' '
+		puts(", ");
 		putd(upper);
 
 		// Execute single Fibonacci step
