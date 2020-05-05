@@ -282,9 +282,7 @@ export class Generator {
 				outputStart+='jmp argvLoopStart\n';
 				outputStart+='label argvLoopEnd\n';
 
-				outputStart+='mov r0 SyscallIdArgc ; grab argc\n';
-				outputStart+='syscall\n';
-				outputStart+='push8 r0 ; push argc\n';
+				outputStart+='push8 r1 ; push argc\n';
 				outputStart+='push16 r2 ; push argv\n';
 
 				let mainFunction=this.currentScope.getSymbolByName('main');
