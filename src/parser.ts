@@ -1,5 +1,8 @@
 import { AstNode, AstNodeType } from './ast';
-import { Token } from './tokenizer';
+import { Token, Tokenizer } from './tokenizer';
+
+let fsLib=require('fs');
+let pathLib=require('path');
 
 export class Parser {
 	private nodeStack: AstNode[];
@@ -8,13 +11,38 @@ export class Parser {
 	public constructor() {
 	}
 
-	public parse(input: Token[]):null | AstNode {
+	public parse(path:string):null|AstNode {
 		this.nextNodeId=0;
 
 		let root = new AstNode(AstNodeType.Root, this.nextNodeId++);
 
 		this.nodeStack = [root];
 
+		if (!this.parseRaw(path))
+			return null;
+
+		return root;
+	}
+
+	public parseRaw(path:string):boolean {
+		// Read file
+		let pathData;
+		try {
+			path=pathLib.resolve(__dirname, path);
+			pathData=fsLib.readFileSync(path, 'utf8');
+		} catch(e) {
+			console.log('Could not parse: could not read file \''+path+'\' ('+e.message+')');
+			return false;
+		}
+
+		// Tokenize
+		let input=Tokenizer.tokenize(pathData, path);
+		if (input===null) {
+			console.log('Could not parse: could not tokenize file \''+path+'\'\n');
+			return false;
+		}
+
+		// Parse into abstract syntax tree
 		let token;
 		while((token=input.shift())!=undefined) {
 			let currNode=this.nodeStack[this.nodeStack.length-1];
@@ -27,6 +55,51 @@ export class Parser {
 						input.unshift(token);
 
 						continue;
+					}
+
+					// Hash to start preprocessor directive?
+					if (token.text=='#') {
+						// Peek at next token - must be the 'command' (e.g. 'include', 'define')
+						if (input.length==0) {
+							console.log('Could not parse: unfinished preprocessor directive - expected command ('+token.location.toString()+', state '+this.nodeStackGetHierarchyString()+')');
+							return false;
+						}
+
+						token=input.shift()!;
+						switch(token.text) {
+							case 'include':
+								// Include statement - next token should be quoted string
+								if (input.length==0) {
+									console.log('Could not parse: unfinished preprocessor include directive - expected path ('+token.location.toString()+', state '+this.nodeStackGetHierarchyString()+')');
+									return false;
+								}
+
+								token=input.shift()!;
+
+								if (token.text.length<2 || token.text[0]!='"' || token.text[token.text.length-1]!='"') {
+									console.log('Could not parse: bad include path - expected quoted string ('+token.location.toString()+', state '+this.nodeStackGetHierarchyString()+')');
+									return false;
+								}
+
+								// Extract file name (by stripping off quotes)
+								token.text.substring()
+								let includePath=token.text.substring(1);
+								includePath=includePath.substring(0, includePath.length-1);
+
+								includePath=pathLib.resolve(pathLib.dirname(path), includePath);
+
+								// Resurse to parse this file
+								if (!this.parseRaw(includePath)) {
+									console.log('Could not parse: could not parse included file \''+includePath+'\' ('+token.location.toString()+', state '+this.nodeStackGetHierarchyString()+')');
+									return false;
+								}
+
+								continue;
+							break;
+						}
+
+						console.log('Could not parse: bad preprocessor directive \''+token.text+'\' ('+token.location.toString()+', state '+this.nodeStackGetHierarchyString()+')');
+						return false;
 					}
 				break;
 				case AstNodeType.Definition:
@@ -659,15 +732,15 @@ export class Parser {
 
 			// Bad sequence of tokens
 			console.log('Could not parse: unexpected token \''+token.text+'\' ('+token.location.toString()+', state '+this.nodeStackGetHierarchyString()+')');
-			return null;
+			return false;
 		}
 
 		if (this.nodeStack.length!=1) {
 			console.log('Could not parse: unsatisfied nodes '+this.nodeStackGetHierarchyString());
-			return null;
+			return false;
 		}
 
-		return root;
+		return true;
 	}
 
 	private nodeStackGetHierarchyString():string {

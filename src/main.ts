@@ -1,7 +1,6 @@
 import { Generator } from './generator'
 import { Optimizer } from './optimizer'
 import { Parser } from './parser'
-import { Tokenizer } from './tokenizer'
 
 let fs=require('fs');
 let path=require('path');
@@ -22,19 +21,9 @@ for(let i=2; i<process.argv.length-2; ++i) {
 const inputPath=process.argv[process.argv.length-2];
 const outputPath=process.argv[process.argv.length-1];
 
-// Load input file data
-const inputData = fs.readFileSync(path.resolve(__dirname, inputPath), 'utf8')
-
-// Tokenize
-let tokens=Tokenizer.tokenize(inputData, inputPath);
-if (tokens===null) {
-	console.log('Error: could not tokenize\n');
-	process.exit(0);
-}
-
-// Parse
+// Parse input file (and any others included by it)
 let parser=new Parser();
-let ast=parser.parse(tokens);
+let ast=parser.parse(inputPath);
 if (ast===null) {
 	console.log('Error: could not parse\n');
 	process.exit(0);

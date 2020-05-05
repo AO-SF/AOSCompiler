@@ -13,7 +13,7 @@ export class Token {
 }
 
 export class Tokenizer {
-	static operators: string[]=['->','==','!=','<=','>=','<','>','=','+','-','*','/','(',')','{','}','[',']','.',',','&','|','^','!',';'];
+	static operators: string[]=['->','==','!=','<=','>=','<','>','=','+','-','*','/','(',')','{','}','[',']','.',',','&','|','^','!',';','#']; // '#' is included for preprocessor directives
 
 	static tokenize(input: string, file: string):null | Token[] {
 		let tokens: Token[] = [];
