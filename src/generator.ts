@@ -7,6 +7,7 @@ export class Generator {
 	private globalScope: Scope = new Scope('global', null, false);
 	private currentScope: Scope;
 	private globalStackAdjustment:number = 0; // this is required so that we can still determine the address of automatic variables, despite adjusting the stack pointer mid-function
+	private usedSymbols = {};
 
 	public constructor() {
 	}
@@ -26,6 +27,85 @@ export class Generator {
 		// Pass to determine scope and variable information
 		if (!this.generateNodePassScopes(rootNode))
 			return null;
+
+		// Pass to find unused symbols
+		let unusedSymbolChange:boolean;
+		do {
+			// Reset state and recalculate used symbols
+			unusedSymbolChange=false;
+			this.usedSymbols={};
+			if (!this.generateNodePassUnusedSymbols(rootNode))
+				return null;
+
+			let symbolList=this.globalScope.getSymbolList();
+
+			// First look for unused functions
+			for(let i=0; i<symbolList.length; ++i) {
+				let symbol=symbolList[i];
+
+				// Is this symbol used?
+				if (this.usedSymbols[symbol.mangledName])
+					continue;
+
+				// Not a function?
+				if (!(symbol instanceof ScopeFunction))
+					continue;
+
+				// Remove function definition node from AST
+				let functionNode=rootNode.getFunctionDefinitionNode(symbol.name);
+				if (functionNode===null) {
+					console.log('Internal error - could not get AST node for function \''+symbol.name+'\' in unused symbol pass');
+					return null;
+				}
+
+				if (!functionNode.remove()) {
+					console.log('Internal error - could not remove AST node for function \''+symbol.name+'\' in unused symbol pass');
+					return null;
+				}
+
+				// Remove function's body scope
+				let functionBodyScope=symbol.getBodyScope();
+				if (functionBodyScope===null) {
+					console.log('Internal error - could not get body scope for function \''+symbol.name+'\' in unused symbol pass');
+					return null;
+				}
+
+				if (!functionBodyScope.parent!.remove(functionBodyScope.name)) {
+					console.log('Internal error - could not remove body scope for function \''+symbol.name+'\' in unused symbol pass');
+					return null;
+				}
+
+				// Remove function symbol itself from containing scope
+				if (!symbol.scope.removeSymbol(symbol.name)) {
+					console.log('Internal error - could not remove scope symnol for function \''+symbol.name+'\' in unused symbol pass');
+					return null;
+				}
+
+				// Indicate a change has occurred so that we try again (there may now be even more to remove)
+				unusedSymbolChange=true;
+			}
+
+			// If any functions have been removed due to being unused, then re-run unused symbol check as there may now be others.
+			if (unusedSymbolChange)
+				continue;
+
+			// If no unused functions, look for unused variables
+			for(let i=0; i<symbolList.length; ++i) {
+				let symbol=symbolList[i];
+
+				// Is this symbol used?
+				if (this.usedSymbols[symbol.mangledName])
+					continue;
+
+				// Symbol type specific logic
+				if (symbol instanceof ScopeStorageSymbol) {
+					console.log('Warning - unused variable \''+symbol.name+'\' (defined in '+symbol.definitionToken.location.toString()+')');
+				} else {
+					console.log('Internal error - bad symbol type for \''+symbol.name+'\' in unused symbol pass');
+					return null;
+				}
+			}
+		} while(unusedSymbolChange);
 
 		// Final pass to generate asm code
 		return this.generateNodePassCode(rootNode);
@@ -232,6 +312,425 @@ export class Generator {
 			case AstNodeType.QuotedString:
 				return true;
 			break;
+		}
+
+		this.printError('unexpected/unhandled node of type '+AstNodeType[node.type], null); // TODO: can we find most relevant token to pass?
+		return false;
+	}
+
+	private generateNodePassUnusedSymbols(node: AstNode):boolean {
+		switch(node.type) {
+			case AstNodeType.Root: {
+				// Recurse to handle children
+				for(let i=0; i<node.children.length; ++i)
+					if (!this.generateNodePassUnusedSymbols(node.children[i]))
+						return false;
+
+				// Mark main function symbol as used
+				let mainFunction=this.currentScope.getSymbolByName('main');
+				if (mainFunction===null || !(mainFunction instanceof ScopeFunction)) {
+					this.printError('missing \'main\' function', null);
+					return false;
+				}
+
+				this.usedSymbols[mainFunction.mangledName]=true;
+
+				// Also mark argc and argv as unused
+				let mainFunctionArgc=mainFunction.getBodyScope()!.getSymbolByName('argc');
+				if (mainFunctionArgc!==null)
+					this.usedSymbols[mainFunctionArgc.mangledName]=true;
+
+				let mainFunctionArgv=mainFunction.getBodyScope()!.getSymbolByName('argv');
+				if (mainFunctionArgv!==null)
+					this.usedSymbols[mainFunctionArgv.mangledName]=true;
+
+				return true;
+			} break;
+			case AstNodeType.Definition:
+			break;
+			case AstNodeType.Type:
+			break;
+			case AstNodeType.Name:
+			break;
+			case AstNodeType.VariableDefinition: {
+				return true;
+			} break;
+			case AstNodeType.FunctionDefinition: {
+				let nameTypeNode=node.children[0];
+				let argumentsNode=(node.children.length==3 ? node.children[1] : null);
+				let bodyNode=(argumentsNode!==null ? node.children[2] : node.children[1]);
+
+				// First child is VariableDefinition defining function's name and return type
+				let nameNode=nameTypeNode.children[0];
+				let name=nameNode.tokens[0].text;
+
+				// Lookup symbol in scope
+				let symbol=this.currentScope.getSymbolByName(name);
+				if (symbol===null  || !(symbol instanceof ScopeFunction)) {
+					this.printError('internal error - bad symbol \''+name+'\'', nameNode.tokens[0]);
+					return false;
+				}
+
+				let func=symbol as ScopeFunction;
+
+				// Enter function scope
+				if (!this.generateNodePassCodeEnterScope(func.getScopeName()))
+					return false;
+
+				// Recurse for child Block node
+				if (!this.generateNodePassUnusedSymbols(bodyNode))
+					return false;
+
+				// Leave function scope
+				if (!this.generateNodePassCodeLeaveScope())
+					return false;
+
+				return true;
+			} break;
+			case AstNodeType.FunctionDefinitionArguments: {
+			} break;
+			case AstNodeType.Block: {
+				// Recurse to handle children
+				for(let i=0; i<node.children.length; ++i)
+					if (!this.generateNodePassUnusedSymbols(node.children[i]))
+						return false;
+
+				return true;
+			} break;
+			case AstNodeType.Statement: {
+				// Recurse to handle children
+				for(let i=0; i<node.children.length; ++i)
+					if (!this.generateNodePassUnusedSymbols(node.children[i]))
+						return false;
+
+				return true;
+			} break;
+			case AstNodeType.StatementContinue: {
+				return true;
+			} break;
+			case AstNodeType.StatementBreak: {
+				return true;
+			} break;
+			case AstNodeType.StatementReturn: {
+				// Recurse to handle children
+				for(let i=0; i<node.children.length; ++i)
+					if (!this.generateNodePassUnusedSymbols(node.children[i]))
+						return false;
+
+				return true;
+			} break;
+			case AstNodeType.StatementWhile: {
+				let conditionNode=node.children[0];
+				let bodyNode=node.children[1];
+
+				// Generate label names to use later
+				let mangledPrefix=this.currentScope.genNewSymbolMangledPrefix(node.id)+'_while';
+
+				// Condition checking
+				if (!this.generateNodePassUnusedSymbols(conditionNode))
+					return false;
+
+				// Body
+				if (!this.generateNodePassCodeEnterScope(mangledPrefix+'body'))
+					return false;
+
+				if (!this.generateNodePassUnusedSymbols(bodyNode))
+					return false;
+
+				if (!this.generateNodePassCodeLeaveScope())
+					return false;
+
+				return true;
+			} break;
+			case AstNodeType.StatementFor: {
+				let initNode=node.children[0];
+				let conditionNode=node.children[1];
+				let incrementNode=node.children[2];
+				let bodyNode=node.children[3];
+
+				// Generate label names to use later
+				let mangledPrefix=this.currentScope.genNewSymbolMangledPrefix(node.id)+'_for';
+
+				// Generate initialisation code
+				if (!this.generateNodePassUnusedSymbols(initNode))
+					return false;
+
+				// Condition checking
+				if (!this.generateNodePassUnusedSymbols(conditionNode))
+					return false;
+
+				// Generate body code
+				if (!this.generateNodePassCodeEnterScope(mangledPrefix+'body'))
+					return false;
+
+				if (!this.generateNodePassUnusedSymbols(bodyNode))
+					return false;
+
+				if (!this.generateNodePassCodeLeaveScope())
+					return false;
+
+				// Generate 'increment' code
+				if (!this.generateNodePassUnusedSymbols(incrementNode))
+					return false;
+
+				return true;
+			} break;
+			case AstNodeType.StatementIf: {
+				let conditionNode=node.children[0];
+				let bodyNode=node.children[1];
+
+				// Generate label names to use later
+				let mangledPrefix=this.currentScope.genNewSymbolMangledPrefix(node.id)+'_if';
+
+				// Condition checking
+				if (!this.generateNodePassUnusedSymbols(conditionNode))
+					return false;
+
+				// Body
+				if (!this.generateNodePassCodeEnterScope(mangledPrefix+'body'))
+					return false;
+
+				if (!this.generateNodePassUnusedSymbols(bodyNode))
+					return false;
+
+				if (!this.generateNodePassCodeLeaveScope())
+					return false;
+
+				return true;
+			} break;
+			case AstNodeType.StatementInlineAsm: {
+				let quotedStringNode=node.children[0];
+
+				// Unescape string (replace e.g. '\' followed by 'n' with single genuine newline)
+				let input=this.parseQuotedString(quotedStringNode.tokens[0].text, quotedStringNode.tokens[0])+'\n';
+
+				// If any variables should be substituted in.
+				for(let i=0; i<input.length; ++i) {
+					// Check for '$' indicating start of variable which should be substituted
+					if (input[i]!='$') {
+						continue;
+					}
+
+					// Find the full extent of the symbol
+					let name='';
+					for(++i; i<input.length; ++i) {
+						if (!Parser.strIsSymbol(name+input[i]))
+							break;
+						name+=input[i];
+					}
+
+					// Generate code to move this symbol's address into r0, and add it to the inline asm
+					let symbol=this.currentScope.getSymbolByName(name);
+					if (symbol===null) {
+						this.printError('internal error - unhandled symbol type for \''+name+'\' (inline asm variable substitution)', quotedStringNode.tokens[0]);
+						return false;
+					}
+					this.usedSymbols[symbol.mangledName]=true;
+				}
+
+				return true;
+			} break;
+			case AstNodeType.Expression: {
+			} break;
+			case AstNodeType.ExpressionAssignment: {
+				let lhsNode=node.children[0];
+				let rhsNode=node.children[1];
+
+				// Check lhsNode is one of expected types.
+				if (lhsNode.type!=AstNodeType.ExpressionTerminal && lhsNode.type!=AstNodeType.ExpressionDereference) {
+					this.printError('bad destination in assignment - expected literal or pointer/array dereference', lhsNode.tokens[0]);
+					return false;
+				}
+
+				// Is the LHS even a registered variable?
+				let name=lhsNode.tokens[0].text;
+				let lhsSymbol=this.currentScope.getSymbolByName(name);
+				if (lhsSymbol===null) {
+					this.printError('undefined symbol \''+name+'\' as destination in assignment', lhsNode.tokens[0]);
+					return false;
+				}
+
+				if (!(lhsSymbol instanceof ScopeStorageSymbol)) {
+					this.printError('cannot use non-variable symbol \''+name+'\' as destination in assignment', lhsNode.tokens[0]);
+					return false;
+				}
+
+				let lhsStorageSymbol=lhsSymbol as ScopeVariable;
+
+				// Calculate RHS value and push onto stack
+				if (!this.generateNodePassUnusedSymbols(rhsNode))
+					return false;
+
+				this.globalStackAdjustment+=2;
+
+				// Node-type specific code to place destination address into r0
+				if (lhsNode.type==AstNodeType.ExpressionTerminal) {
+					// Ensure LHS is not an array
+					if (this.typeIsArray(lhsStorageSymbol.type)) {
+						this.printError('cannot use array symbol \''+name+'\' as destination in assignment', lhsNode.tokens[0]);
+						return false;
+					}
+				} else {
+					// lhsNode.type==AstNodeType.ExpressionDereference
+
+					// Generate code to place relevant array entry address into r0
+					if (!this.generateNodePassUnusedSymbols(lhsNode.children[0]))
+						return false;
+				}
+
+				// Store logic (address is in r0, pop RHS value off stack into r5)
+				this.globalStackAdjustment-=2;
+
+				return true;
+			} break;
+			case AstNodeType.ExpressionEquality:
+				// Generate LHS code and save value onto stack
+				if (!this.generateNodePassUnusedSymbols(node.children[0]))
+					return false;
+
+				this.globalStackAdjustment+=2;
+
+				// Generate RHS code and save value into r5
+				if (!this.generateNodePassUnusedSymbols(node.children[1]))
+					return false;
+
+				return true;
+			break;
+			case AstNodeType.ExpressionInequality: {
+				// Generate LHS code and save value onto stack
+				if (!this.generateNodePassUnusedSymbols(node.children[0]))
+					return false;
+
+				this.globalStackAdjustment+=2;
+
+				// Generate RHS code and save value into r5
+				if (!this.generateNodePassUnusedSymbols(node.children[1]))
+					return false;
+
+				this.globalStackAdjustment-=2;
+
+				return true;
+			} break;
+			case AstNodeType.ExpressionAddition: {
+				// Generate first-operand code and save value onto stack
+				if (!this.generateNodePassUnusedSymbols(node.children[0]))
+					return false;
+
+				this.globalStackAdjustment+=2;
+
+				// Loop over rest of the operands
+				for(let i=0; i<node.tokens.length; ++i) {
+					// Generate this operands code and place value in r5
+					if (!this.generateNodePassUnusedSymbols(node.children[i+1]))
+						return false;
+				}
+
+				// Pop result off stack
+				this.globalStackAdjustment-=2;
+
+				return true;
+			} break;
+			case AstNodeType.ExpressionMultiplication: {
+				// Generate first-operand code and save value onto stack
+				if (!this.generateNodePassUnusedSymbols(node.children[0]))
+					return false;
+
+				this.globalStackAdjustment+=2;
+
+				// Loop over rest of the operands
+				for(let i=0; i<node.tokens.length; ++i) {
+					// Generate this operands code and place value in r5
+					if (!this.generateNodePassUnusedSymbols(node.children[i+1]))
+						return false;
+				}
+
+				// Pop result off stack
+				this.globalStackAdjustment-=2;
+
+				return true;
+			} break;
+			case AstNodeType.ExpressionTerminal: {
+				// No children? Must be literal
+				if (node.children.length==0) {
+					let terminalStr=node.tokens[0].text;
+
+					// Terminal is literal number?
+					if (Parser.strIsNumber(terminalStr))
+						return true;
+
+					// Terminal is symbol name?
+					let outputSymbol=this.currentScope.getSymbolByName(terminalStr);
+					if (outputSymbol!==null) {
+						// Mark symbol as used
+						this.usedSymbols[outputSymbol.mangledName]=true;
+						return true;
+					}
+
+					// Bad terminal
+					this.printError('bad literal \''+terminalStr+'\' in expression', node.tokens[0]);
+					return false;
+				}
+			} break;
+			case AstNodeType.ExpressionBrackets: {
+			} break;
+			case AstNodeType.ExpressionCall: {
+				let funcName=node.tokens[0].text;
+
+				// Lookup symbol in scope
+				let symbol=this.currentScope.getSymbolByName(funcName);
+				if (symbol===null) {
+					this.printError('bad function call - no such symbol \''+funcName+'\'', node.tokens[0]);
+					return false;
+				}
+
+				if (!(symbol instanceof ScopeFunction)) {
+					this.printError('bad function call - symbol \''+funcName+'\' is not a function', node.tokens[0]);
+					return false;
+				}
+
+				let func=symbol as ScopeFunction;
+
+				// Mark symbol as used
+				this.usedSymbols[func.mangledName]=true;
+
+				// Handle arguments
+				let asmArgumentStackAdjustment=0;
+				for(let i=0; i<node.children.length; ++i) {
+					if (!this.generateNodePassUnusedSymbols(node.children[i]))
+						return false;
+				}
+
+				return true;
+			} break;
+			case AstNodeType.ExpressionDereference: {
+				let ptrName=node.tokens[0].text;
+
+				// Lookup symbol in scope
+				let symbol=this.currentScope.getSymbolByName(ptrName);
+				if (symbol===null) {
+					this.printError('bad dereference - no such symbol \''+ptrName+'\'', node.tokens[0]);
+					return false;
+				}
+
+				if (!(symbol instanceof ScopeStorageSymbol)) {
+					this.printError('bad dereference - symbol \''+ptrName+'\' is not a variable', node.tokens[0]);
+					return false;
+				}
+
+				let storageSymbol=symbol as ScopeStorageSymbol;
+
+				// Mark symbol as used
+				this.usedSymbols[storageSymbol.mangledName]=true;
+
+				// Generate code to place relevant array entry address into r0
+				if (!this.generateNodePassUnusedSymbols(node.children[0]))
+					return false;
+
+				return true;
+			} break;
+			case AstNodeType.QuotedString: {
+				return true;
+			} break;
 		}
 
 		this.printError('unexpected/unhandled node of type '+AstNodeType[node.type], null); // TODO: can we find most relevant token to pass?

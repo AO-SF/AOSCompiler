@@ -48,6 +48,42 @@ export class AstNode {
 		return child;
 	}
 
+	public remove():boolean {
+		if (this.parent===null)
+			return true;
+
+		for(let i=0; i<this.parent.children.length; ++i)
+			if (this.parent.children[i]==this) {
+				this.parent.children.splice(i,1);
+				this.parent=null;
+				return true;
+			}
+
+		return false;
+	}
+
+	// This should be called only on root node instance
+	public getFunctionDefinitionNode(name:string):null|AstNode {
+		// Not root node?
+		if (this.parent!==null)
+			return null;
+
+		// Look through children for matching function definition
+		for(let i=0; i<this.children.length; ++i) {
+			let funcDefNode=this.children[i];
+			if (funcDefNode.type==AstNodeType.FunctionDefinition && funcDefNode.children.length>0) {
+				let varDefNode=funcDefNode.children[0];
+				if (varDefNode.type==AstNodeType.VariableDefinition && varDefNode.children.length>0) {
+					let nameNode=varDefNode.children[0];
+					if (nameNode.type==AstNodeType.Name && nameNode.tokens.length>0 && nameNode.tokens[0].text==name)
+						return funcDefNode;
+				}
+			}
+		}
+
+		return null;
+	}
+
 	public debug() {
 		this.debugHelper(0);
 	}

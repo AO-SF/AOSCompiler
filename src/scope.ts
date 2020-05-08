@@ -156,6 +156,18 @@ export class Scope {
 		return scope;
 	}
 
+	public remove(name: string):boolean {
+		for(let i=0; i<this.children.length; ++i) {
+			if (this.children[i].name==name) {
+				this.children[i].parent=null;
+				this.children.splice(i, 1);
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	public getLoopScope():null|Scope {
 		// Global scope is not a loop
 		if (this.parent===null)
@@ -256,6 +268,22 @@ export class Scope {
 		return null;
 	}
 
+	// This function returns a list containing all symbols in this scope and those in all descendant scopes
+	public getSymbolList():ScopeSymbol[] {
+		let list:ScopeSymbol[] = [];
+
+		// Start by copying our own list of symbols
+		Array.prototype.push.apply(list, this.symbols);
+
+		// Recurse to add any descendant symbols
+		for(let i=0; i<this.children.length; ++i) {
+			let childList=this.children[i].getSymbolList();
+			Array.prototype.push.apply(list, childList);
+		}
+
+		return list;
+	}
+
 	public addVariable(name:string, id:number, definitionToken:Token, type:string, typeSize:number, totalSize:number):ScopeVariable {
 		let mangledName=this.genNewSymbolMangledName(id)+'_variable_'+Generator.escapeName(name);
 		let variable=new ScopeVariable(this, name, mangledName, definitionToken, type, typeSize, totalSize);
@@ -275,6 +303,17 @@ export class Scope {
 		let arg=new ScopeArgument(this, name, mangledName, definitionToken, type, typeSize, totalSize);
 		this.symbols.push(arg);
 		return arg;
+	}
+
+	public removeSymbol(name:string):boolean {
+		for(let i=0; i<this.symbols.length; ++i) {
+			if (this.symbols[i].name==name) {
+				this.symbols.splice(i,1);
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	// This function returns total number of bytes required to store all local variables in this scope but NOT any from descendant scopes
