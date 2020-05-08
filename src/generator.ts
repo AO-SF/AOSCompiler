@@ -557,6 +557,8 @@ export class Generator {
 
 				let lhsStorageSymbol=lhsSymbol as ScopeVariable;
 
+				// Mark symbol as used
+				this.usedSymbols[lhsStorageSymbol.mangledName]=true;
 				// Calculate RHS value and push onto stack
 				if (!this.generateNodePassUnusedSymbols(rhsNode))
 					return false;
@@ -1184,15 +1186,6 @@ export class Generator {
 
 				let lhsStorageSymbol=lhsSymbol as ScopeVariable;
 
-				// Calculate RHS value and push onto stack
-				let rhsOutput=this.generateNodePassCode(rhsNode);
-				if (rhsOutput===null)
-					return null;
-				output+=rhsOutput;
-
-				output+='push16 r0\n';
-				this.globalStackAdjustment+=2;
-
 				// Node-type specific code to place destination address into r0
 				let storeSize=0;
 				if (lhsNode.type==AstNodeType.ExpressionTerminal) {
@@ -1220,19 +1213,30 @@ export class Generator {
 					storeSize=this.typeToSize(this.typeDereference(lhsStorageSymbol.type)!); // ! is safe as otherwise above function would have failed
 				}
 
-				// Store logic (address is in r0, pop RHS value off stack into r5)
+				// Calculate RHS value and place into r0 (saving destination address on the stack then restoring into r5)
+				output+='push16 r0\n';
+				this.globalStackAdjustment+=2;
+
+				let rhsOutput=this.generateNodePassCode(rhsNode);
+				if (rhsOutput===null)
+					return null;
+				output+=rhsOutput;
+
 				this.globalStackAdjustment-=2;
 				output+='pop16 r5\n';
 
+				// Store logic (address is in r5, RHS value in r0)
 				switch(storeSize) {
-					case 1: output+='store8 r0 r5\n'; break;
-					case 2: output+='store16 r0 r5\n'; break;
+					case 1: output+='store8 r5 r0\n'; break;
+					case 2: output+='store16 r5 r0\n'; break;
 					default:
 						// TODO: this
 						this.printError('internal error - unimplemented large-variable logic (assignment)', lhsNode.tokens[0]);
 						return null;
 					break;
 				}
+
+				// Note: we leave the RHS value in r0 as value of the assignment expression as a whole
 
 				return output;
 			} break;
