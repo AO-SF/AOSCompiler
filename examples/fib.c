@@ -26,7 +26,7 @@ uint16_t main(uint8_t argc, uint8_t **argv) {
 	}
 
 	// Print newline
-	putc(10);
+	puts("\n");
 
 	return 0;
 }
