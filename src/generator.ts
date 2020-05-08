@@ -335,7 +335,7 @@ export class Generator {
 
 				this.usedSymbols[mainFunction.mangledName]=true;
 
-				// Also mark argc and argv as unused
+				// Also mark argc and argv as used
 				let mainFunctionArgc=mainFunction.getBodyScope()!.getSymbolByName('argc');
 				if (mainFunctionArgc!==null)
 					this.usedSymbols[mainFunctionArgc.mangledName]=true;
