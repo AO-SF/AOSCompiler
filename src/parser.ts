@@ -7,6 +7,7 @@ let pathLib=require('path');
 export class Parser {
 	private nodeStack: AstNode[];
 	private nextNodeId:number;
+	private includes = {};
 
 	public constructor() {
 	}
@@ -25,10 +26,17 @@ export class Parser {
 	}
 
 	public parseRaw(path:string):boolean {
+		path=pathLib.resolve(__dirname, path);
+
+		// Only include any particular file once
+		if (this.includes[path])
+			return true;
+
+		this.includes[path]=true;
+
 		// Read file
 		let pathData;
 		try {
-			path=pathLib.resolve(__dirname, path);
 			pathData=fsLib.readFileSync(path, 'utf8');
 		} catch(e) {
 			console.log('Could not parse: could not read file \''+path+'\' ('+e.message+')');
