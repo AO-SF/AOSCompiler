@@ -14,6 +14,22 @@ uint8_t *strchr(uint8_t *str, uint8_t c) {
 	return ret;
 }
 
+uint8_t *strchrnul(uint8_t *str, uint8_t c) {
+	asm "$c\nload8 r0 r0\npush8 r0";
+	asm "$str\ndec r0\nload16 r1 r0";
+	asm "pop8 r2";
+	asm "mov r0 SyscallIdStrChrNul";
+	asm "syscall";
+
+	uint8_t *ret;
+	asm "push16 r0";
+	asm "$ret\ndec2 r0";
+	asm "pop16 r1";
+	asm "store16 r0 r1";
+
+	return ret;
+}
+
 uint8_t strcmp(uint8_t *a, uint8_t *b) {
 	asm "$b\nload16 r0 r0\npush16 r0";
 	asm "$a\ndec2 r0\nload16 r1 r0";
@@ -32,22 +48,21 @@ uint8_t strcmp(uint8_t *a, uint8_t *b) {
 }
 
 void strcpy(uint8_t *dest, uint8_t *src) {
-	asm "requireend lib/std/str/strcpy.s";
-	asm "$src\nload16 r0 r0\npush16 r0";
-	asm "$dest\ndec2 r0\nload16 r0 r0\npop16 r1";
-	asm "call strcpy";
+	memmove(dest, src, strlen(src)+1);
 }
 
 uint16_t strlen(uint8_t *str) {
-	asm "requireend lib/std/str/strlen.s";
-	asm "$str\nload16 r0 r0";
-	asm "call strlen";
+	// Find null terminator pointer then subtract base pointer to find length
+	return strchrnul(str, 0)-str;
+}
 
-	uint16_t ret;
-	asm "push16 r0";
-	asm "$ret\ndec2 r0";
-	asm "pop16 r1";
-	asm "store16 r0 r1";
+void memmove(void *dest, void *src, uint16_t n) {
+	asm "$n\nload16 r0 r0\npush16 r0";
+	asm "$src\nload16 r0 r0\npush16 r0";
+	asm "$dest\ndec2 r0\nload16 r1 r0";
+	asm "pop16 r2";
+	asm "pop16 r3";
 
-	return ret;
+	asm "mov r0 SyscallIdMemMove";
+	asm "syscall";
 }
