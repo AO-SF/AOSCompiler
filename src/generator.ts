@@ -596,6 +596,8 @@ export class Generator {
 				if (!this.generateNodePassUnusedSymbols(node.children[1]))
 					return false;
 
+				this.globalStackAdjustment-=2;
+
 				return true;
 			break;
 			case AstNodeType.ExpressionInequality: {
