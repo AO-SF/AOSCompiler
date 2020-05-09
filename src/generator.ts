@@ -27,6 +27,7 @@ export class Generator {
 		// Pass to determine scope and variable information
 		if (!this.generateNodePassScopes(rootNode))
 			return null;
+		console.assert(this.globalStackAdjustment==0, "global stack adjustment not 0 after scopes pass");
 
 		// Pass to find unused symbols
 		let unusedSymbolChange:boolean;
@@ -36,6 +37,7 @@ export class Generator {
 			this.usedSymbols={};
 			if (!this.generateNodePassUnusedSymbols(rootNode))
 				return null;
+			console.assert(this.globalStackAdjustment==0, "global stack adjustment not 0 after unused symbols pass");
 
 			let symbolList=this.globalScope.getSymbolList();
 
@@ -108,7 +110,10 @@ export class Generator {
 		} while(unusedSymbolChange);
 
 		// Final pass to generate asm code
-		return this.generateNodePassCode(rootNode);
+		let ret=this.generateNodePassCode(rootNode);
+		console.assert(this.globalStackAdjustment==0, "global stack adjustment not 0 after code gen pass");
+
+		return ret;
 	}
 
 	private generateNodePassScopes(node: AstNode):boolean {
