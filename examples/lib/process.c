@@ -1,3 +1,4 @@
+#include "string.c"
 
 void exit(uint16_t status) {
 	asm "$status\nload16 r1 r0";
@@ -56,9 +57,14 @@ void exec(uint8_t argc, uint8_t *argv, uint8_t searchFlag) {
 }
 
 void getAbsPath(uint8_t *dest, uint8_t *src) {
-	asm "requireend lib/std/proc/getabspath.s";
-	asm "$src\nload16 r0 r0\npush16 r0";
-	asm "$dest\ndec2 r0\nload16 r0 r0";
-	asm "pop16 r1";
-	asm "call getabspath";
+	// Already absolute?
+	if (src[0]==47) { // '/'
+		strcpy(dest, src);
+		return;
+	}
+
+	// Otherwise prepend src with pwd
+	strcpy(dest, getPwd());
+	strcat(dest, "/");
+	strcat(dest, src);
 }
