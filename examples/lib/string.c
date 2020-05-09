@@ -47,6 +47,10 @@ uint8_t strcmp(uint8_t *a, uint8_t *b) {
 	return ret;
 }
 
+void strcat(uint8_t *dest, uint8_t *src) {
+	strcpy(dest+strlen(dest), src);
+}
+
 void strcpy(uint8_t *dest, uint8_t *src) {
 	memmove(dest, src, strlen(src)+1);
 }
