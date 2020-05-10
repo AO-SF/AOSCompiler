@@ -38,23 +38,46 @@ void fputc(uint8_t fd, uint8_t c) {
 	asm "syscall";
 }
 
+uint16_t read(uint8_t fd, uint16_t offset, uint8_t *data, uint16_t len) {
+	asm "$fd\nload8 r0 r0\npush8 r0";
+	asm "$offset\ndec r0\nload16 r0 r0\npush16 r0";
+	asm "$data\ndec3 r0\nload16 r0 r0\npush16 r0";
+	asm "$len\ndec5 r0\nload16 r4 r0"; // len
+	asm "pop16 r3"; // data
+	asm "pop16 r2"; // offset
+	asm "pop8 r1"; // fd
+	asm "mov r0 SyscallIdRead";
+	asm "syscall";
+
+	uint16_t count;
+	asm "push16 r0";
+	asm "$count\ndec2 r0";
+	asm "pop16 r1";
+	asm "store16 r0 r1";
+
+	return count;
+}
+
 // reads up to and including first newline, always null-terminates buf (potentially to be 0 length if could not read)
 // returns number of bytes read
 uint16_t fgets(uint8_t fd, uint16_t offset, uint8_t *buf, uint16_t len) {
-	asm "requireend lib/std/io/fget.s";
-
-	asm "$fd\nload8 r0 r0\npush8 r0";
-	asm "$offset\ndec r0\nload16 r0 r0\npush16 r0";
-	asm "$buf\ndec3 r0\nload16 r0 r0\npush16 r0";
-	asm "$len\ndec5 r0\nload16 r3 r0";
-	asm "pop16 r2\npop16 r1\npop8 r0";
-	asm "call fgets";
-
+	// Loop reading a character each iteration
 	uint16_t readCount;
-	asm "push16 r0";
-	asm "$readCount\ndec2 r0";
-	asm "pop16 r1";
-	asm "store16 r0 r1";
+	for(readCount=0; readCount<len; readCount=readCount+1) {
+		// Read character into provided buffer
+		if (read(fd, offset+readCount, buf+readCount, 1)==0) {
+			break;// EOF
+		}
+
+		// Newline?
+		if (buf[readCount]==10) { // '\n'=10
+			readCount=readCount+1;
+			break;
+		}
+	}
+
+	// Add null terminator
+	buf[readCount]=0;
 
 	return readCount;
 }
