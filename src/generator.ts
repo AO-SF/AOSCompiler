@@ -1,6 +1,7 @@
 import { AstNode, AstNodeType } from './ast';
 import { Parser } from './parser';
 import { Scope, ScopeSymbol, ScopeVariable, ScopeFunction, ScopeArgument, ScopeStorageSymbol } from './scope';
+import { Syscall, syscallInit, syscallToAsmSymbol } from './syscall';
 import { Token } from './tokenizer';
 
 export class Generator {
@@ -760,12 +761,11 @@ export class Generator {
 	private generateNodePassCode(node: AstNode):null | string {
 		switch(node.type) {
 			case AstNodeType.Root: {
-				// Require includes
-				let outputIncludes='';
-				outputIncludes+='; Includes\n';
-				outputIncludes+='require lib/sys/syscall.s\n';
-
-				outputIncludes+='\n';
+				// Define syscall constants
+				let outputSyscalls='';
+				outputSyscalls+='; Syscall Ids\n';
+				outputSyscalls+=syscallInit();
+				outputSyscalls+='\n';
 
 				// Generate code for global variables
 				let outputGlobals='';
@@ -790,7 +790,7 @@ export class Generator {
 				outputStart+='mov r1 0 ; argv loop index\n';
 				outputStart+='label argvLoopStart\n';
 
-				outputStart+='mov r0 SyscallIdArgvN\n';
+				outputStart+='mov r0 '+syscallToAsmSymbol(Syscall.ArgvN)+'\n';
 				outputStart+='syscall\n';
 				outputStart+='cmp r5 r0 r0\n';
 				outputStart+='skipneqz r5\n';
@@ -811,7 +811,7 @@ export class Generator {
 				}
 				outputStart+='call '+mainFunction.mangledName+'\n';
 				outputStart+='mov r1 r0\n';
-				outputStart+='mov r0 SyscallIdExit\n';
+				outputStart+='mov r0 '+syscallToAsmSymbol(Syscall.Exit)+'\n';
 				outputStart+='syscall\n';
 
 				outputStart+='\n';
@@ -828,7 +828,7 @@ export class Generator {
 				// Combine all parts for full output
 				let output='';
 
-				output+=outputIncludes;
+				output+=outputSyscalls;
 				output+=outputGlobals;
 				output+=outputStart;
 				output+=outputCode;
