@@ -4,7 +4,14 @@
 
 uint8_t readBuffer[256]; // this is global as otherwise makes stack calculations more difficult/slower in runFd
 
+uint8_t pwdBuffer[64]; // used to hold pwd so we can update it in the case of a 'cd' command
+
 uint16_t main(uint8_t argc, uint8_t **argv) {
+	// Copy current pwd into our own buffer,
+	// then update our env vars to point at this buffer
+	strcpy(pwdBuffer, getPwd());
+	setPwd(pwdBuffer);
+
 	// Run any scripts pass as arguments
 	uint8_t i;
 	for(i=1; i<argc; i=i+1) {
@@ -81,6 +88,34 @@ uint8_t runFd(uint8_t fd, uint8_t interactiveMode) {
 		// Check for builtin command
 		if (strcmp(readBuffer, "exit")==0) {
 			return 0;
+		}
+		if (strcmp(readBuffer, "cd")==0) {
+			// If no arguments then assume home directory
+			if (argc<2) {
+				ptr="/home";
+			}
+
+			// Otherwise use first argument as path
+			if (argc>=2) {
+				// Grab first argument after 'cd' command and make sure it is absolute
+				ptr=readBuffer+strlen(readBuffer)+1; // get addr of 1st argument
+				ptr=ptr+strlen(ptr)+1; // get addr of 2nd argument (use this as scratch space)
+				getAbsPath(ptr, readBuffer+strlen(readBuffer)+1);
+
+			}
+
+			// Check directory exists
+			if (isDir(ptr)==0) {
+				puts("no such directory: ");
+				puts(ptr);
+				puts("\n");
+				continue;
+			}
+
+			// Update pwf
+			strcpy(pwdBuffer, ptr);
+
+			continue;
 		}
 
 		// Fork
