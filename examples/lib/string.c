@@ -62,8 +62,8 @@ uint16_t strlen(uint8_t *str) {
 
 void memmove(void *dest, void *src, uint16_t n) {
 	asm "$n\nload16 r0 r0\npush16 r0";
-	asm "$src\nload16 r0 r0\npush16 r0";
-	asm "$dest\ndec2 r0\nload16 r1 r0";
+	asm "$src\ndec2 r0\nload16 r0 r0\npush16 r0";
+	asm "$dest\ndec4 r0\nload16 r1 r0";
 	asm "pop16 r2";
 	asm "pop16 r3";
 
