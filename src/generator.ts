@@ -306,6 +306,8 @@ export class Generator {
 			case AstNodeType.StatementInlineAsm:
 			case AstNodeType.Expression:
 			case AstNodeType.ExpressionAssignment:
+			case AstNodeType.ExpressionOr:
+			case AstNodeType.ExpressionAnd:
 			case AstNodeType.ExpressionEquality:
 			case AstNodeType.ExpressionInequality:
 			case AstNodeType.ExpressionAddition:
@@ -590,6 +592,15 @@ export class Generator {
 
 				return true;
 			} break;
+			case AstNodeType.ExpressionOr:
+			case AstNodeType.ExpressionAnd:
+				// Loop over operands
+				for(let i=0; i<node.children.length; ++i)
+					if (!this.generateNodePassUnusedSymbols(node.children[i]))
+						return false;
+
+				return true;
+			break;
 			case AstNodeType.ExpressionEquality:
 				// Generate LHS code and save value onto stack
 				if (!this.generateNodePassUnusedSymbols(node.children[0]))
@@ -1244,6 +1255,76 @@ export class Generator {
 				}
 
 				// Note: we leave the RHS value in r0 as value of the assignment expression as a whole
+
+				return output;
+			} break;
+			case AstNodeType.ExpressionOr: {
+				let output='';
+
+				// Generate label names to use later
+				let mangledPrefix=this.currentScope.genNewSymbolMangledPrefix(node.id)+'_or';
+				let trueLabel=this.currentScope.name+mangledPrefix+'true';
+				let endLabel=this.currentScope.name+mangledPrefix+'end';
+
+				// Loop over operands
+				for(let i=0; i<node.children.length; ++i) {
+					// Generate this operands code and place value in r0
+					let childOutput=this.generateNodePassCode(node.children[i]);
+					if (childOutput===null)
+						return null;
+					output+=childOutput;
+
+					// If r0 is non-zero then entire OR expression must be true
+					output+='cmp r0 r0 r0\n';
+					output+='skipeqz r0\n';
+					output+='jmp '+trueLabel+'\n';
+				}
+
+				// Fall through logic for false case
+				output+='mov r0 0\n';
+				output+='jmp '+endLabel+'\n';
+
+				// True logic
+				output+='label '+trueLabel+'\n';
+				output+='mov r0 1\n';
+
+				// End label
+				output+='label '+endLabel+'\n';
+
+				return output;
+			} break;
+			case AstNodeType.ExpressionAnd: {
+				let output='';
+
+				// Generate label names to use later
+				let mangledPrefix=this.currentScope.genNewSymbolMangledPrefix(node.id)+'_and';
+				let falseLabel=this.currentScope.name+mangledPrefix+'false';
+				let endLabel=this.currentScope.name+mangledPrefix+'end';
+
+				// Loop over operands
+				for(let i=0; i<node.children.length; ++i) {
+					// Generate this operands code and place value in r0
+					let childOutput=this.generateNodePassCode(node.children[i]);
+					if (childOutput===null)
+						return null;
+					output+=childOutput;
+
+					// If r0 is zero then entire AND expression must be false
+					output+='cmp r0 r0 r0\n';
+					output+='skipneqz r0\n';
+					output+='jmp '+falseLabel+'\n';
+				}
+
+				// Fall through logic for true case
+				output+='mov r0 1\n';
+				output+='jmp '+endLabel+'\n';
+
+				// False logic
+				output+='label '+falseLabel+'\n';
+				output+='mov r0 0\n';
+
+				// End label
+				output+='label '+endLabel+'\n';
 
 				return output;
 			} break;

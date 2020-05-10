@@ -528,13 +528,51 @@ export class Parser {
 					if (token.text=='=') {
 						currNode.tokens.push(token);
 
-						this.nodeStackPush(AstNodeType.ExpressionEquality);
+						this.nodeStackPush(AstNodeType.ExpressionOr);
 
 						continue;
 					}
 
 					// Terminators
 					if (token.text==']' || token.text==')' || token.text==',' || token.text==';') {
+						this.nodeStackPop();
+
+						input.unshift(token);
+
+						continue;
+					}
+				break;
+				case AstNodeType.ExpressionOr:
+					// OR operator to indicate another operand?
+					if (token.text=='||') {
+						currNode.tokens.push(token);
+
+						this.nodeStackPush(AstNodeType.ExpressionAnd);
+
+						continue;
+					}
+
+					// Terminators
+					if (token.text=='=' || token.text==']' || token.text==')' || token.text==',' || token.text==';') {
+						this.nodeStackPop();
+
+						input.unshift(token);
+
+						continue;
+					}
+				break;
+				case AstNodeType.ExpressionAnd:
+					// AND operator to indicate another operand?
+					if (token.text=='&&') {
+						currNode.tokens.push(token);
+
+						this.nodeStackPush(AstNodeType.ExpressionEquality);
+
+						continue;
+					}
+
+					// Terminators
+					if (token.text=='||' || token.text=='=' || token.text==']' || token.text==')' || token.text==',' || token.text==';') {
 						this.nodeStackPop();
 
 						input.unshift(token);
@@ -553,7 +591,7 @@ export class Parser {
 					}
 
 					// Terminators
-					if (token.text=='=' || token.text==']' || token.text==')' || token.text==',' || token.text==';') {
+					if (token.text=='&&' || token.text=='||' || token.text=='=' || token.text==']' || token.text==')' || token.text==',' || token.text==';') {
 						this.nodeStackPop();
 
 						input.unshift(token);
@@ -572,7 +610,7 @@ export class Parser {
 					}
 
 					// Terminators
-					if (token.text=='==' || token.text=='!=' || token.text=='=' || token.text==']' || token.text==')' || token.text==',' || token.text==';') {
+					if (token.text=='&&' || token.text=='||' || token.text=='==' || token.text=='!=' || token.text=='=' || token.text==']' || token.text==')' || token.text==',' || token.text==';') {
 						this.nodeStackPop();
 
 						input.unshift(token);
@@ -591,7 +629,7 @@ export class Parser {
 					}
 
 					// Terminators
-					if (token.text=='<' || token.text=='<=' || token.text=='>' || token.text=='>=' || token.text=='==' || token.text=='!=' || token.text=='=' || token.text==']' || token.text==')' || token.text==',' || token.text==';') {
+					if (token.text=='<' || token.text=='<=' || token.text=='>' || token.text=='>=' || token.text=='&&' || token.text=='||' || token.text=='==' || token.text=='!=' || token.text=='=' || token.text==']' || token.text==')' || token.text==',' || token.text==';') {
 						this.nodeStackPop();
 
 						input.unshift(token);
@@ -610,7 +648,7 @@ export class Parser {
 					}
 
 					// Terminators
-					if (token.text=='+' || token.text=='-' || token.text=='<' || token.text=='<=' || token.text=='>' || token.text=='>=' || token.text=='==' || token.text=='!=' || token.text=='=' || token.text==']' || token.text==')' || token.text==',' || token.text==';') {
+					if (token.text=='+' || token.text=='-' || token.text=='<' || token.text=='<=' || token.text=='>' || token.text=='>=' || token.text=='&&' || token.text=='||' || token.text=='==' || token.text=='!=' || token.text=='=' || token.text==']' || token.text==')' || token.text==',' || token.text==';') {
 						this.nodeStackPop();
 
 						input.unshift(token);
@@ -812,6 +850,12 @@ export class Parser {
 				this.nodeStackPushHelper(node, AstNodeType.ExpressionAssignment);
 			break;
 			case AstNodeType.ExpressionAssignment:
+				this.nodeStackPushHelper(node, AstNodeType.ExpressionOr);
+			break;
+			case AstNodeType.ExpressionOr:
+				this.nodeStackPushHelper(node, AstNodeType.ExpressionAnd);
+			break;
+			case AstNodeType.ExpressionAnd:
 				this.nodeStackPushHelper(node, AstNodeType.ExpressionEquality);
 			break;
 			case AstNodeType.ExpressionEquality:
