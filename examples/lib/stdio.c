@@ -160,3 +160,17 @@ void inttostr(uint8_t *str, uint16_t x, uint16_t padding) {
 	// Add null terminator
 	str[1]=0;
 }
+
+uint8_t isDir(uint8_t *path) {
+	asm "$path\nload16 r1 r0";
+	asm "mov r0 SyscallIdIsDir";
+	asm "syscall";
+
+	uint8_t ret;
+	asm "push8 r0";
+	asm "$ret\ndec r0";
+	asm "pop8 r1";
+	asm "store8 r0 r1";
+
+	return ret;
+}
