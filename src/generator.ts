@@ -1,6 +1,6 @@
 import { AstNode, AstNodeType } from './ast';
 import { Parser } from './parser';
-import { Scope, ScopeSymbol, ScopeVariable, ScopeFunction, ScopeArgument, ScopeStorageSymbol } from './scope';
+import { Scope, ScopeSymbol, ScopeVariable, ScopeFunction, ScopeArgument, ScopeStorageSymbol, ScopeLabel } from './scope';
 import { Syscall, syscallInit, syscallToAsmSymbol } from './syscall';
 import { Token } from './tokenizer';
 
@@ -92,7 +92,7 @@ export class Generator {
 			if (unusedSymbolChange)
 				continue;
 
-			// If no unused functions, look for unused variables
+			// If no unused functions, look for other types of unused symbols
 			for(let i=0; i<symbolList.length; ++i) {
 				let symbol=symbolList[i];
 
@@ -103,6 +103,8 @@ export class Generator {
 				// Symbol type specific logic
 				if (symbol instanceof ScopeStorageSymbol) {
 					console.log('Warning - unused variable \''+symbol.name+'\' (defined in '+symbol.definitionToken.location.toString()+')');
+				} else if (symbol instanceof ScopeLabel) {
+					console.log('Warning - unused label \''+symbol.name+'\' (defined in '+symbol.definitionToken.location.toString()+')');
 				} else {
 					console.log('Internal error - bad symbol type for \''+symbol.name+'\' in unused symbol pass');
 					return null;
@@ -238,6 +240,22 @@ export class Generator {
 				}
 				return true;
 			} break;
+			case AstNodeType.Label:
+				let nameToken=node.tokens[0];
+				let name=nameToken.text;
+
+				// Check if symbol with same name already defined previously
+				let previouslyDefined=this.currentScope.getSymbolByName(name);
+				if (previouslyDefined!==null) {
+					this.printError('cannot redefine symbol \''+name+'\' as label (previously defined at '+previouslyDefined.definitionToken.location.toString()+')', nameToken);
+					return false;
+				}
+
+				// Add label to current scope
+				this.currentScope.addLabel(name, node.id, nameToken);
+
+				return true;
+			break;
 			case AstNodeType.Statement: {
 				// Pass for children
 				for(let i=0; i<node.children.length; ++i) {
@@ -304,6 +322,7 @@ export class Generator {
 
 				return true;
 			} break;
+			case AstNodeType.StatementGoto:
 			case AstNodeType.StatementInlineAsm:
 			case AstNodeType.Expression:
 			case AstNodeType.ExpressionAssignment:
@@ -405,6 +424,9 @@ export class Generator {
 
 				return true;
 			} break;
+			case AstNodeType.Label:
+				return true;
+			break;
 			case AstNodeType.Statement: {
 				// Recurse to handle children
 				for(let i=0; i<node.children.length; ++i)
