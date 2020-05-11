@@ -140,6 +140,12 @@ export class ScopeArgument extends ScopeStorageSymbol {
 
 }
 
+export class ScopeLabel extends ScopeSymbol {
+	public constructor(scope: Scope, name:string, mangledName:string, definitionToken: Token) {
+		super(scope, name, mangledName, definitionToken);
+	}
+}
+
 export class Scope {
 	public static separator='__';
 
@@ -303,6 +309,13 @@ export class Scope {
 		let arg=new ScopeArgument(this, name, mangledName, definitionToken, type, typeSize, totalSize);
 		this.symbols.push(arg);
 		return arg;
+	}
+
+	public addLabel(name:string, id:number, definitionToken:Token):ScopeLabel {
+		let mangledName=this.genNewSymbolMangledName(id)+'_label_'+Generator.escapeName(name);
+		let label=new ScopeLabel(this, name, mangledName, definitionToken);
+		this.symbols.push(label);
+		return label;
 	}
 
 	public removeSymbol(name:string):boolean {

@@ -239,12 +239,25 @@ export class Parser {
 						continue;
 					}
 
-					// Semicolon passed up from statement?
-					if (token.text==';') {
+					// Semicolon/colon passed up from statement?
+					if (token.text==';' || token.text==':') {
 						this.nodeStackPush(AstNodeType.Statement);
 
 						continue;
 					}
+				break;
+				case AstNodeType.Label:
+					// First token must be a terminal symbol
+					if (Parser.strIsSymbol(token.text)) {
+						// Peek at next token checking for colon
+						if (input.length>0 && input[0].text==':') {
+							currNode.tokens.push(token);
+							this.nodeStackPop();
+
+							continue;
+						}
+					}
+
 				break;
 				case AstNodeType.Statement:
 					// Type suggesting variable definition?
@@ -254,6 +267,18 @@ export class Parser {
 						input.unshift(token);
 
 						continue;
+					}
+
+					// Terminal symbol followed by colon suggesting label?
+					if (Parser.strIsSymbol(token.text)) {
+						// Peek at next token checking for colon
+						if (input.length>0 && input[0].text==':') {
+							this.nodeStackPush(AstNodeType.Label);
+
+							input.unshift(token);
+
+							continue;
+						}
 					}
 
 					// Terminal literal suggesting part of an expression?
@@ -308,6 +333,15 @@ export class Parser {
 						continue;
 					}
 
+					// Goto statement?
+					if (token.text=='goto') {
+						this.nodeStackPush(AstNodeType.StatementGoto);
+
+						input.unshift(token);
+
+						continue;
+					}
+
 					// Inline asm statement?
 					if (token.text=='asm') {
 						this.nodeStackPush(AstNodeType.StatementInlineAsm);
@@ -343,6 +377,15 @@ export class Parser {
 
 					// Semicolon to terminate statement?
 					if (token.text==';') {
+						this.nodeStackPop();
+
+						input.unshift(token);
+
+						continue;
+					}
+
+					// Colon to terminate label?
+					if (token.text==':') {
 						this.nodeStackPop();
 
 						input.unshift(token);
@@ -489,6 +532,26 @@ export class Parser {
 						this.nodeStackPop();
 
 						this.nodeStackPush(AstNodeType.Statement); // this expression can be empty if another closing curly follows
+
+						continue;
+					}
+				break;
+				case AstNodeType.StatementGoto:
+					// 'goto' keyword to start statement?
+					if (currNode.tokens.length==0 && token.text=='goto') {
+						// Add token for better error reporting later
+						currNode.tokens.push(token);
+
+						this.nodeStackPush(AstNodeType.Name);
+
+						continue;
+					}
+
+					// Semicolon to terminate statement?
+					if (token.text==';') {
+						this.nodeStackPop();
+
+						input.unshift(token);
 
 						continue;
 					}
@@ -830,6 +893,8 @@ export class Parser {
 			break;
 			case AstNodeType.Block:
 			break;
+			case AstNodeType.Label:
+			break;
 			case AstNodeType.Statement:
 			break;
 			case AstNodeType.StatementReturn:
@@ -843,6 +908,8 @@ export class Parser {
 			case AstNodeType.StatementFor:
 			break;
 			case AstNodeType.StatementIf:
+			break;
+			case AstNodeType.StatementGoto:
 			break;
 			case AstNodeType.StatementInlineAsm:
 			break;
@@ -897,7 +964,7 @@ export class Parser {
 	}
 
 	public static strIsKeyword(str: string):boolean {
-		if (str=='return' || str=='asm' || str=='while' || str=='for' || str=='if' || str=='continue' || str=='break')
+		if (str=='return' || str=='asm' || str=='while' || str=='for' || str=='if' || str=='continue' || str=='break' || str=='goto')
 			return true;
 		return false;
 	}

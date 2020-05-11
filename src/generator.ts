@@ -528,6 +528,23 @@ export class Generator {
 
 				return true;
 			} break;
+			case AstNodeType.StatementGoto:
+				let nameNode=node.children[0];
+				let nameToken=nameNode.tokens[0];
+				let name=nameToken.text;
+
+				// Lookup symbol
+				let symbol=this.currentScope.getSymbolByName(name);
+				if (symbol===null) {
+					this.printError('undefined symbol \''+name+'\' as goto destination', nameToken);
+					return false;
+				}
+
+				// Mark symbol as used
+				this.usedSymbols[symbol.mangledName]=true;
+
+				return true;
+			break;
 			case AstNodeType.StatementInlineAsm: {
 				let quotedStringNode=node.children[0];
 
@@ -959,6 +976,26 @@ export class Generator {
 
 				return output;
 			} break;
+			case AstNodeType.Label: {
+				let nameToken=node.tokens[0];
+				let name=nameToken.text;
+
+				// Lookup symbol
+				let symbol=this.currentScope.getSymbolByName(name);
+				if (symbol===null) {
+					this.printError('internal error - undefined symbol \''+name+'\' as goto destination', nameToken);
+					return null;
+				}
+
+				// Check symbol type
+				if (!(symbol instanceof ScopeLabel)) {
+					this.printError('internal error - bad label symbol \''+name+'\' not a label', nameToken);
+					return null;
+				}
+
+				// Generate code to create label
+				return 'label '+symbol.mangledName+'\n';
+			} break;
 			case AstNodeType.Statement: {
 				let output='';
 
@@ -1159,6 +1196,27 @@ export class Generator {
 				output+='label '+endLabel+'\n';
 
 				return output;
+			} break;
+			case AstNodeType.StatementGoto: {
+				let nameNode=node.children[0];
+				let nameToken=nameNode.tokens[0];
+				let name=nameToken.text;
+
+				// Lookup symbol
+				let symbol=this.currentScope.getSymbolByName(name);
+				if (symbol===null) {
+					this.printError('undefined symbol \''+name+'\' as goto destination', nameToken);
+					return null;
+				}
+
+				// Check symbol type
+				if (!(symbol instanceof ScopeLabel)) {
+					this.printError('bad goto destination \''+name+'\' not a label', nameToken);
+					return null;
+				}
+
+				// Generate code to jump to label
+				return 'jmp '+symbol.mangledName+'\n';
 			} break;
 			case AstNodeType.StatementInlineAsm: {
 				let quotedStringNode=node.children[0];

@@ -20,12 +20,14 @@ export class Optimizer {
 				case AstNodeType.FunctionDefinition:
 				case AstNodeType.FunctionDefinitionArguments:
 				case AstNodeType.Block:
+				case AstNodeType.Label:
 				case AstNodeType.StatementReturn:
 				case AstNodeType.StatementContinue:
 				case AstNodeType.StatementBreak:
 				case AstNodeType.StatementWhile:
 				case AstNodeType.StatementFor:
 				case AstNodeType.StatementIf:
+				case AstNodeType.StatementGoto:
 				case AstNodeType.StatementInlineAsm:
 				case AstNodeType.ExpressionCall:
 				case AstNodeType.ExpressionDereference:
