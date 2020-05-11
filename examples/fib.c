@@ -10,13 +10,13 @@ uint16_t main(uint8_t argc, uint8_t **argv) {
 	lower=0;
 	upper=1;
 
-	putd(lower);
+	putd(lower, 0);
 
 	// Loop to print subsequent values
 	while(lower<40000) {
 		// Print separator followed by value
 		puts(", ");
-		putd(upper);
+		putd(upper, 0);
 
 		// Execute single Fibonacci step
 		uint16_t sum;

@@ -8,10 +8,18 @@ void putc(uint8_t c) {
 	fputc(2, c); // FdStdout=2
 }
 
-void putd(uint16_t x) {
-	// Print x using putdec library function
-	asm "requireend lib/std/io/fputdec.s";
-	asm "$x\nload16 r0 r0\ncall putdec";
+void putd(uint16_t x, uint16_t padding) {
+	fputd(2, x, padding);
+}
+
+// padding treated same as for inttostr
+void fputd(uint8_t fd, uint16_t x, uint16_t padding) {
+	// TODO: improve this using alloca to create local array (or skip string stuff and do differently)
+
+	// Convert number to string then write to file
+	uint8_t str[6];
+	inttostr(str, x, padding);
+	fputs(fd, str);
 }
 
 void fputs(uint8_t fd, uint8_t *str) {
@@ -80,4 +88,53 @@ uint16_t fgets(uint8_t fd, uint16_t offset, uint8_t *buf, uint16_t len) {
 	buf[readCount]=0;
 
 	return readCount;
+}
+
+// padding capped at 5 maximum
+void inttostr(uint8_t *str, uint16_t x, uint16_t padding) {
+	// Skip leading zeros
+	if (x<10 && padding<2) {
+		goto print1;
+	}
+	if (x<100 && padding<3) {
+		goto print10;
+	}
+	if (x<1000 && padding<4) {
+		goto print100;
+	}
+	if (x<10000 && padding<5) {
+		goto print1000;
+	}
+
+	// Print digits (unrolled loop)
+	uint8_t digit;
+
+	digit=x/10000;
+	x=x-digit*10000;
+	str[0]=digit+48;
+	str=str+1;
+
+	print1000:
+	digit=x/1000;
+	x=x-digit*1000;
+	str[0]=digit+48;
+	str=str+1;
+
+	print100:
+	digit=x/100;
+	x=x-digit*100;
+	str[0]=digit+48;
+	str=str+1;
+
+	print10:
+	digit=x/10;
+	x=x-digit*10;
+	str[0]=digit+48;
+	str=str+1;
+
+	print1:
+	str[0]=x+48;
+
+	// Add null terminator
+	str[1]=0;
 }
