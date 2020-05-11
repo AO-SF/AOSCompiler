@@ -176,12 +176,6 @@ uint8_t openPath(uint8_t *path, uint8_t mode) {
 	return fd;
 }
 
-void close(uint8_t fd) {
-	asm "$fd\nload8 r1 r0";
-	asm "mov r0 SyscallIdClose";
-	asm "syscall";
-}
-
 uint8_t isDir(uint8_t *path) {
 	asm "$path\nload16 r1 r0";
 	asm "mov r0 SyscallIdIsDir";

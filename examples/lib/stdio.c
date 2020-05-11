@@ -1,5 +1,27 @@
 #include "string.c"
 
+uint8_t open(uint8_t *path, uint8_t mode) {
+	asm "$path\nload16 r0 r0\npush16 r0";
+	asm "$mode\ndec2 r0\nload8 r2 r0";
+	asm "pop16 r1";
+	asm "mov r0 SyscallIdOpen";
+	asm "syscall";
+
+	uint8_t fd;
+	asm "push8 r0";
+	asm "$fd\ndec r0";
+	asm "pop8 r1";
+	asm "store8 r0 r1";
+
+	return fd;
+}
+
+void close(uint8_t fd) {
+	asm "$fd\nload8 r1 r0";
+	asm "mov r0 SyscallIdClose";
+	asm "syscall";
+}
+
 void puts(uint8_t *str) {
 	fputs(2, str); // FdStdout=2
 }
