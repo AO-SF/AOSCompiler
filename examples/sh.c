@@ -101,7 +101,6 @@ uint8_t runFd(uint8_t fd, uint8_t interactiveMode) {
 				ptr=readBuffer+strlen(readBuffer)+1; // get addr of 1st argument
 				ptr=ptr+strlen(ptr)+1; // get addr of 2nd argument (use this as scratch space)
 				getAbsPath(ptr, readBuffer+strlen(readBuffer)+1);
-
 			}
 
 			// Check directory exists
