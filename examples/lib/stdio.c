@@ -174,3 +174,17 @@ uint8_t isDir(uint8_t *path) {
 
 	return ret;
 }
+
+uint8_t fileExists(uint8_t *path) {
+	asm "$path\nload16 r1 r0";
+	asm "mov r0 SyscallIdFileExists";
+	asm "syscall";
+
+	uint8_t ret;
+	asm "push8 r0";
+	asm "$ret\ndec r0";
+	asm "pop8 r1";
+	asm "store8 r0 r1";
+
+	return ret;
+}
