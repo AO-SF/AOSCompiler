@@ -18,7 +18,7 @@ uint16_t main(uint8_t argc, uint8_t **argv) {
 		uint8_t fd;
 
 		// Open file in read-only mode
-		fd=openPath(argv[i], 1);
+		fd=shellOpen(argv[i], 1);
 		if (fd==0) {
 			continue; // try next argument
 		}
@@ -153,25 +153,4 @@ uint8_t runFd(uint8_t fd, uint8_t interactiveMode) {
 
 	// Return 1 to indicate we should move onto the next input file/stdin
 	return 1;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Library functions
-////////////////////////////////////////////////////////////////////////////////
-
-uint8_t openPath(uint8_t *path, uint8_t mode) {
-	asm "requireend lib/std/proc/openpath.s";
-
-	asm "$path\nload16 r0 r0\npush16 r0";
-	asm "$mode\ndec2 r0\nload8 r1 r0\npop16 r0";
-
-	asm "call openpath";
-
-	uint8_t fd;
-	asm "push8 r0";
-	asm "$fd\ndec r0";
-	asm "pop8 r1";
-	asm "store8 r0 r1";
-
-	return fd;
 }

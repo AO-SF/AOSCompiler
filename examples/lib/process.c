@@ -1,3 +1,4 @@
+#include "stdio.c"
 #include "string.c"
 
 void exit(uint16_t status) {
@@ -86,4 +87,47 @@ void getAbsPath(uint8_t *dest, uint8_t *src) {
 	strcpy(dest, getPwd());
 	strcat(dest, "/");
 	strcat(dest, src);
+}
+
+// see shellPath for more info
+uint8_t shellOpen(uint8_t *path, uint8_t mode) {
+	uint8_t newPath[64]; // PathMax=64
+	shellPath(newPath, path);
+	return open(newPath, mode);
+}
+
+// Intereprets a path as the shell would.
+// If absolute, then copies as-is.
+// Otherwise assumes relative to a directory in PATH or to the PWD
+// dest should have enough space for at least PathMax bytes
+void shellPath(uint8_t *dest, uint8_t *src) {
+	// Already absolute?
+	if (src[0]==47) { // '/'=47
+		strcpy(dest, src);
+		return;
+	}
+
+	// Check if relative to one of PATH directories
+	uint8_t *path;
+	path=getPath();
+
+	uint8_t *colonPtr;
+	while((colonPtr=strchr(path, 58))!=0) { // ':'=58
+		// Create test path in dest string
+		memmove(dest, path, colonPtr-path);
+		dest[colonPtr-path]=0;
+		strcat(dest, "/");
+		strcat(dest, src);
+
+		// Check if file exists
+		if (fileExists(dest)) {
+			return;
+		}
+
+		// Update path pointer for next iteration
+		path=colonPtr+1;
+	}
+
+	// Finally assume relative to working directory
+	getAbsPath(dest, src);
 }
