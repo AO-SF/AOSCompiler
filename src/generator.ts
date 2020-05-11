@@ -168,8 +168,6 @@ export class Generator {
 				return true;
 			} break;
 			case AstNodeType.FunctionDefinition: {
-				// TODO: handle FunctionDefinitionArguments
-
 				let nameTypeNode=node.children[0];
 				let argumentsNode=(node.children.length==3 ? node.children[1] : null);
 				let bodyNode=(argumentsNode!==null ? node.children[2] : node.children[1]);
