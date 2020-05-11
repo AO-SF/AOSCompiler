@@ -25,6 +25,25 @@ void setPwd(uint8_t *pwd) {
 	asm "syscall";
 }
 
+uint8_t *getPath() {
+	asm "mov r0 SyscallIdEnvGetPath";
+	asm "syscall";
+
+	uint8_t *path;
+	asm "push16 r0";
+	asm "$path\ndec2 r0";
+	asm "pop16 r1";
+	asm "store16 r0 r1";
+
+	return path;
+}
+
+void setPath(uint8_t *path) {
+	asm "$path\nload16 r1 r0";
+	asm "mov r0 SyscallIdEnvSetPath";
+	asm "syscall";
+}
+
 uint8_t fork() {
 	asm "mov r0 SyscallIdFork";
 	asm "syscall";
