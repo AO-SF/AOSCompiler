@@ -8,6 +8,7 @@ export enum AstNodeType {
 	VariableDefinition,
 	FunctionDefinition,
 	FunctionDefinitionArguments,
+	Define,
 	Block,
 	Label,
 	Statement,

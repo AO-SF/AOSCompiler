@@ -1,6 +1,6 @@
 import { AstNode, AstNodeType } from './ast';
 import { Parser } from './parser';
-import { Scope, ScopeSymbol, ScopeVariable, ScopeFunction, ScopeArgument, ScopeStorageSymbol, ScopeLabel } from './scope';
+import { Scope, ScopeSymbol, ScopeVariable, ScopeFunction, ScopeArgument, ScopeStorageSymbol, ScopeLabel, ScopeDefine } from './scope';
 import { Syscall, syscallInit, syscallToAsmSymbol } from './syscall';
 import { Token } from './tokenizer';
 
@@ -105,7 +105,7 @@ export class Generator {
 					console.log('Warning - unused variable \''+symbol.name+'\' (defined in '+symbol.definitionToken.location.toString()+')');
 				} else if (symbol instanceof ScopeLabel) {
 					console.log('Warning - unused label \''+symbol.name+'\' (defined in '+symbol.definitionToken.location.toString()+')');
-				} else {
+				} else if (!(symbol instanceof ScopeDefine)) { // we do not warn about unused defines as these are expected
 					console.log('Internal error - bad symbol type for \''+symbol.name+'\' in unused symbol pass');
 					return null;
 				}
@@ -227,6 +227,27 @@ export class Generator {
 					// Add argument to current (function) scope
 					this.currentScope.addArgument(argumentName, variableDefinitionNode.id, argumentNameNode.tokens[0], argumentType, argumentTypeSize, argumentTotalSize);
 				}
+
+				return true;
+			} break;
+			case AstNodeType.Define: {
+				let nameNode=node.children[0];
+				let nameToken=nameNode.tokens[0];
+				let name=nameToken.text;
+
+				let valueNode=node.children[1];
+				let valueToken=valueNode.tokens[0];
+				let value=parseInt(valueToken.text);
+
+				// Check if symbol with same name already defined previously
+				let previouslyDefined=this.currentScope.getSymbolByName(name);
+				if (previouslyDefined!==null) {
+					this.printError('cannot redefine symbol \''+name+'\' as define (previously defined at '+previouslyDefined.definitionToken.location.toString()+')', nameToken);
+					return false;
+				}
+
+				// Add define to current scope
+				this.currentScope.addDefine(name, node.id, nameToken, value);
 
 				return true;
 			} break;
@@ -414,6 +435,9 @@ export class Generator {
 			} break;
 			case AstNodeType.FunctionDefinitionArguments: {
 			} break;
+			case AstNodeType.Define:
+				return true;
+			break;
 			case AstNodeType.Block: {
 				// Recurse to handle children
 				for(let i=0; i<node.children.length; ++i)
@@ -961,6 +985,10 @@ export class Generator {
 			} break;
 			case AstNodeType.FunctionDefinitionArguments: {
 			} break;
+			case AstNodeType.Define:
+				// Nothing to do - these only exist at compile time
+				return '';
+			break;
 			case AstNodeType.Block: {
 				let output='';
 
@@ -1747,34 +1775,41 @@ export class Generator {
 	}
 
 	// This returns a string containing asm code which will move the value of the given symbol into r0.
-	// If the symbol is not a variable or an argument then returns null.
+	// If the symbol is not a variable, argument or define then returns null.
 	public generateSymbolValue(symbol: ScopeSymbol):null|string {
-		let output='';
-
-		// Not even the right kind of symbol?
-		if (!(symbol instanceof ScopeStorageSymbol))
-			return null;
-		let storageSymbol=symbol as ScopeStorageSymbol;
-
-		// Generate code to move address into r0
-		let outputAddress=this.generateSymbolAddress(symbol);
-		if (outputAddress===null)
-			return null;
-		output+=outputAddress;
-
-		// Generate loading code (address is in r0 from previous step)
-		// Note: we skip this for arrays as their base address is their value when used in an expression
-		if (!this.typeIsArray(storageSymbol.type)) {
-			switch(storageSymbol.typeSize) {
-				case 1: output+='load8 r0 r0\n'; break;
-				case 2: output+='load16 r0 r0\n'; break;
-				default:
-					return null;
-				break;
-			}
+		// Define?
+		if (symbol instanceof ScopeDefine) {
+			let defineSymbol=symbol as ScopeDefine;
+			return 'mov r0 '+defineSymbol.value.toString()+'\n';
 		}
 
-		return output;
+		// Storage symbol (variable or argument)?
+		if ((symbol instanceof ScopeStorageSymbol)) {
+			let storageSymbol=symbol as ScopeStorageSymbol;
+			let output='';
+
+			// Generate code to move address into r0
+			let outputAddress=this.generateSymbolAddress(symbol);
+			if (outputAddress===null)
+				return null;
+			output+=outputAddress;
+
+			// Generate loading code (address is in r0 from previous step)
+			// Note: we skip this for arrays as their base address is their value when used in an expression
+			if (!this.typeIsArray(storageSymbol.type)) {
+				switch(storageSymbol.typeSize) {
+					case 1: output+='load8 r0 r0\n'; break;
+					case 2: output+='load16 r0 r0\n'; break;
+					default:
+						return null;
+					break;
+				}
+			}
+
+			return output;
+		}
+
+		return null;
 	}
 
 	// This returns a string containing asm code which will move the address of the given variable into r0

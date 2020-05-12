@@ -104,6 +104,48 @@ export class Parser {
 
 								continue;
 							break;
+							case 'define': {
+								// Define statement - next token should be symbol name
+								if (input.length==0) {
+									console.log('Could not parse: unfinished preprocessor define directive - expected name ('+token.location.toString()+', state '+this.nodeStackGetHierarchyString()+')');
+									return false;
+								}
+								token=input.shift()!;
+
+								let nameToken=token;
+								if (!Parser.strIsSymbol(nameToken.text)) {
+									console.log('Could not parse: bad preprocessor define directive - bad name \''+nameToken.text+'\' ('+token.location.toString()+', state '+this.nodeStackGetHierarchyString()+')');
+									return false;
+								}
+
+								// Next token should be literal integer value
+								if (input.length==0) {
+									console.log('Could not parse: unfinished preprocessor define directive - expected value ('+token.location.toString()+', state '+this.nodeStackGetHierarchyString()+')');
+									return false;
+								}
+								token=input.shift()!;
+
+								let valueToken=token;
+								if (!Parser.strIsNumber(valueToken.text)) {
+									console.log('Could not parse: bad preprocessor define directive - bad value \''+valueToken.text+'\' ('+token.location.toString()+', state '+this.nodeStackGetHierarchyString()+')');
+									return false;
+								}
+
+								// Create AST node structure
+								let defineNode=this.nodeStackPush(AstNodeType.Define);
+
+								let nameNode=this.nodeStackPush(AstNodeType.Name);
+								nameNode.tokens.push(nameToken);
+								this.nodeStackPop();
+
+								let valueNode=this.nodeStackPush(AstNodeType.ExpressionTerminal);
+								valueNode.tokens.push(valueToken);
+								this.nodeStackPop();
+
+								this.nodeStackPop();
+
+								continue;
+							} break;
 						}
 
 						console.log('Could not parse: bad preprocessor directive \''+token.text+'\' ('+token.location.toString()+', state '+this.nodeStackGetHierarchyString()+')');
@@ -136,6 +178,8 @@ export class Parser {
 
 						continue;
 					}
+				break;
+				case AstNodeType.Define:
 				break;
 				case AstNodeType.Type:
 					// Base type?
@@ -221,6 +265,8 @@ export class Parser {
 
 						continue;
 					}
+				break;
+				case AstNodeType.Define:
 				break;
 				case AstNodeType.Block:
 					// Open curly to start block?
@@ -890,6 +936,8 @@ export class Parser {
 			break;
 			case AstNodeType.FunctionDefinitionArguments:
 				this.nodeStackPushHelper(node, AstNodeType.VariableDefinition);
+			break;
+			case AstNodeType.Define:
 			break;
 			case AstNodeType.Block:
 			break;

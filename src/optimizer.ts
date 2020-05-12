@@ -19,6 +19,7 @@ export class Optimizer {
 				case AstNodeType.VariableDefinition:
 				case AstNodeType.FunctionDefinition:
 				case AstNodeType.FunctionDefinitionArguments:
+				case AstNodeType.Define:
 				case AstNodeType.Block:
 				case AstNodeType.Label:
 				case AstNodeType.StatementReturn:
