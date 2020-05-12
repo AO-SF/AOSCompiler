@@ -1261,13 +1261,25 @@ export class Generator {
 					}
 
 					// Generate code to move this symbol's address into r0, and add it to the inline asm
-					let symbolOutput=this.generateSymbolAddressByName(name);
-					if (symbolOutput===null) {
-						this.printError('internal error - unhandled symbol type for \''+name+'\' (inline asm variable substitution)', quotedStringNode.tokens[0]);
+					let symbol=this.currentScope.getSymbolByName(name);
+					if (symbol===null) {
+						this.printError('internal error - no such symbol \''+name+'\' (inline asm variable substitution)', quotedStringNode.tokens[0]);
 						return null;
 					}
 
-					output+=symbolOutput;
+					if (symbol instanceof ScopeDefine) {
+						// Special case for defines as we place their value into r0 (they only exist at compile time and therefore have no address)
+						let defineSymbol=symbol as ScopeDefine;
+						output+='mov r0 '+defineSymbol.value+'\n';
+					} else {
+						// Standard case
+						let symbolOutput=this.generateSymbolAddress(symbol);
+						if (symbolOutput===null) {
+							this.printError('internal error - unhandled symbol type for \''+name+'\' (inline asm variable substitution)', quotedStringNode.tokens[0]);
+							return null;
+						}
+						output+=symbolOutput;
+					}
 				}
 
 				return output;
