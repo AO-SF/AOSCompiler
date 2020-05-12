@@ -1511,6 +1511,18 @@ export class Generator {
 			case AstNodeType.ExpressionAddition: {
 				let output='';
 
+				// Sanity check
+				if (node.children.length!=node.tokens.length+1) {
+					this.printError('internal error - bad children vs token lengths (addition)', node.tokens[0]);
+					return null;
+				}
+
+				// As a safety check for stack logic below, ensure at least 2 operands.
+				if (node.children.length<2) {
+					this.printError('internal error - not enough operands (addition)', node.tokens[0]);
+					return null;
+				}
+
 				// Generate first-operand code and save value onto stack
 				let firstOutput=this.generateNodePassCode(node.children[0]);
 				if (firstOutput===null)
@@ -1537,18 +1549,31 @@ export class Generator {
 						output+='add r0 r0 r5\n';
 					else if (node.tokens[i].text=='-')
 						output+='sub r0 r0 r5\n';
-					output+='push16 r0\n'; // save result ready to act as next operand
-					this.globalStackAdjustment+=2;
-				}
 
-				// Pop result off stack
-				this.globalStackAdjustment-=2;
-				output+='pop16 r0\n';
+					// Save result to stack so we can compute next operand
+					// (unless no more operands)
+					if (i+1<node.tokens.length) {
+						output+='push16 r0\n';
+						this.globalStackAdjustment+=2;
+					}
+				}
 
 				return output;
 			} break;
 			case AstNodeType.ExpressionMultiplication: {
 				let output='';
+
+				// Sanity check
+				if (node.children.length!=node.tokens.length+1) {
+					this.printError('internal error - bad children vs token lengths (multiplication)', node.tokens[0]);
+					return null;
+				}
+
+				// As a safety check for stack logic below, ensure at least 2 operands.
+				if (node.children.length<2) {
+					this.printError('internal error - not enough operands (multiplication)', node.tokens[0]);
+					return null;
+				}
 
 				// Generate first-operand code and save value onto stack
 				let firstOutput=this.generateNodePassCode(node.children[0]);
@@ -1576,13 +1601,14 @@ export class Generator {
 						output+='mul r0 r0 r5\n';
 					else if (node.tokens[i].text=='/')
 						output+='div r0 r0 r5\n';
-					output+='push16 r0\n'; // save result ready to act as next operand
-					this.globalStackAdjustment+=2;
-				}
 
-				// Pop result off stack
-				this.globalStackAdjustment-=2;
-				output+='pop16 r0\n';
+					// Save result to stack so we can compute next operand
+					// (unless no more operands)
+					if (i+1<node.tokens.length) {
+						output+='push16 r0\n';
+						this.globalStackAdjustment+=2;
+					}
+				}
 
 				return output;
 			} break;
