@@ -76,17 +76,3 @@ export enum Syscall {
 	Int32Shl=2056,
 	Int32Shr=2057,
 }
-
-export function syscallInit():string {
-	let output='';
-
-	for (let syscall in Syscall)
-		if (isNaN(Number(syscall)))
-			output+='const '+syscallToAsmSymbol(Number(Syscall[syscall]))+' '+Number(Syscall[syscall])+'\n';
-
-	return output;
-}
-
-export function syscallToAsmSymbol(syscall: Syscall):string {
-	return 'SyscallId'+Syscall[syscall];
-}
