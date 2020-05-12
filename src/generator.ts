@@ -1236,7 +1236,7 @@ export class Generator {
 				// Unescape string (replace e.g. '\' followed by 'n' with single genuine newline)
 				let input=this.parseQuotedString(quotedStringNode.tokens[0].text, quotedStringNode.tokens[0])+'\n';
 
-				// If any variables should be substituted in.
+				// Check if any variables should be substituted in.
 				let output='';
 				for(let i=0; i<input.length; ++i) {
 					// Check for '$' indicating start of variable which should be substituted
@@ -1254,6 +1254,7 @@ export class Generator {
 					}
 
 					// Generate code to move this symbol's address into r0, and add it to the inline asm
+					// Note: this should only clobber r0 and r5
 					let symbol=this.currentScope.getSymbolByName(name);
 					if (symbol===null) {
 						this.printError('internal error - no such symbol \''+name+'\' (inline asm variable substitution)', quotedStringNode.tokens[0]);
@@ -1776,6 +1777,7 @@ export class Generator {
 
 	// This returns a string containing asm code which will move the address of the given symbol into r0.
 	// If the symbol is not a variable or an argument then returns null.
+	// Generated asm code will only clobber r0 and r5.
 	public generateSymbolAddress(symbol: ScopeSymbol):null|string {
 		// Variable?
 		if (symbol instanceof ScopeVariable)
@@ -1837,6 +1839,7 @@ export class Generator {
 	}
 
 	// This returns a string containing asm code which will move the address of the given variable into r0
+	// Generated asm code will only clobber r0 and r5.
 	public generateVariableAddress(variable: ScopeVariable):string {
 		let output='';
 
@@ -1861,6 +1864,7 @@ export class Generator {
 	}
 
 	// This returns a string containing asm code which will move the address of the given argument into r0
+	// Generated asm code will only clobber r0 and r5.
 	public generateArgumentAddress(argument: ScopeArgument):string {
 		let output='';
 

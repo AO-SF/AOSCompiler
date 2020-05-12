@@ -13,19 +13,10 @@
 #define PathMax 64
 
 uint8_t open(uint8_t *path, uint8_t mode) {
-	asm "$path\nload16 r0 r0\npush16 r0";
-	asm "$mode\ndec2 r0\nload8 r2 r0";
-	asm "pop16 r1";
+	asm "$path\nload16 r1 r0";
+	asm "$mode\nload8 r2 r0";
 	asm "$SyscallIdOpen";
 	asm "syscall";
-
-	uint8_t fd;
-	asm "push8 r0";
-	asm "$fd\ndec r0";
-	asm "pop8 r1";
-	asm "store8 r0 r1";
-
-	return fd;
 }
 
 void close(uint8_t fd) {
@@ -60,44 +51,30 @@ void fputs(uint8_t fd, uint8_t *str) {
 	uint16_t len;
 	len=strlen(str);
 
-	asm "$fd\nload8 r0 r0\npush8 r0";
-	asm "$str\ndec r0\nload16 r0 r0\npush16 r0";
-	asm "$len\ndec3 r0\nload16 r4 r0"; // len
-	asm "pop16 r3"; // str
-	asm "pop8 r1"; // fd
+	asm "$fd\nload8 r1 r0";
 	asm "mov r2 0"; // offset=0
+	asm "$str\nload16 r3 r0";
+	asm "$len\nload16 r4 r0";
 	asm "$SyscallIdWrite";
 	asm "syscall";
 }
 
 void fputc(uint8_t fd, uint8_t c) {
-	asm "$fd\nload8 r0 r0\npush8 r0";
-	asm "$c\ndec r0\nmov r3 r0"; // &c
-	asm "pop8 r1"; // fd
-	asm "mov r4 1"; // len=1
+	asm "$fd\nload8 r1 r0";
 	asm "mov r2 0"; // offset=0
+	asm "$c\nmov r3 r0"; // &c
+	asm "mov r4 1"; // len=1
 	asm "$SyscallIdWrite";
 	asm "syscall";
 }
 
 uint16_t read(uint8_t fd, uint16_t offset, uint8_t *data, uint16_t len) {
-	asm "$fd\nload8 r0 r0\npush8 r0";
-	asm "$offset\ndec r0\nload16 r0 r0\npush16 r0";
-	asm "$data\ndec3 r0\nload16 r0 r0\npush16 r0";
-	asm "$len\ndec5 r0\nload16 r4 r0"; // len
-	asm "pop16 r3"; // data
-	asm "pop16 r2"; // offset
-	asm "pop8 r1"; // fd
+	asm "$fd\nload8 r1 r0";
+	asm "$offset\nload16 r2 r0";
+	asm "$data\nload16 r3 r0";
+	asm "$len\nload16 r4 r0";
 	asm "$SyscallIdRead";
 	asm "syscall";
-
-	uint16_t count;
-	asm "push16 r0";
-	asm "$count\ndec2 r0";
-	asm "pop16 r1";
-	asm "store16 r0 r1";
-
-	return count;
 }
 
 // reads up to and including first newline, always null-terminates buf (potentially to be 0 length if could not read)
@@ -177,26 +154,10 @@ uint8_t isDir(uint8_t *path) {
 	asm "$path\nload16 r1 r0";
 	asm "$SyscallIdIsDir";
 	asm "syscall";
-
-	uint8_t ret;
-	asm "push8 r0";
-	asm "$ret\ndec r0";
-	asm "pop8 r1";
-	asm "store8 r0 r1";
-
-	return ret;
 }
 
 uint8_t fileExists(uint8_t *path) {
 	asm "$path\nload16 r1 r0";
 	asm "$SyscallIdFileExists";
 	asm "syscall";
-
-	uint8_t ret;
-	asm "push8 r0";
-	asm "$ret\ndec r0";
-	asm "pop8 r1";
-	asm "store8 r0 r1";
-
-	return ret;
 }

@@ -17,14 +17,6 @@ void exit(uint16_t status) {
 uint8_t *getPwd() {
 	asm "$SyscallIdEnvGetPwd";
 	asm "syscall";
-
-	uint8_t *pwd;
-	asm "push16 r0";
-	asm "$pwd\ndec2 r0";
-	asm "pop16 r1";
-	asm "store16 r0 r1";
-
-	return pwd;
 }
 
 void setPwd(uint8_t *pwd) {
@@ -36,14 +28,6 @@ void setPwd(uint8_t *pwd) {
 uint8_t *getPath() {
 	asm "$SyscallIdEnvGetPath";
 	asm "syscall";
-
-	uint8_t *path;
-	asm "push16 r0";
-	asm "$path\ndec2 r0";
-	asm "pop16 r1";
-	asm "store16 r0 r1";
-
-	return path;
 }
 
 void setPath(uint8_t *path) {
@@ -55,30 +39,19 @@ void setPath(uint8_t *path) {
 uint8_t fork() {
 	asm "$SyscallIdFork";
 	asm "syscall";
-
-	uint8_t ret;
-	asm "push8 r0";
-	asm "$ret\ndec r0";
-	asm "pop8 r1";
-	asm "store8 r0 r1";
-
-	return ret;
 }
 
 void waitpid(uint8_t pid, uint16_t timeoutSeconds) {
-	asm "$timeoutSeconds\nload16 r0 r0\npush16 r0";
-	asm "$pid\ndec2 r0\nload8 r1 r0";
-	asm "pop16 r2";
+	asm "$pid\nload8 r1 r0";
+	asm "$timeoutSeconds\nload16 r2 r0";
 	asm "$SyscallIdWaitPid";
 	asm "syscall";
 }
 
 void exec(uint8_t argc, uint8_t *argv, uint8_t searchFlag) {
-	asm "$searchFlag\nload8 r0 r0\npush8 r0";
-	asm "$argv\ndec1 r0\nload16 r0 r0\npush16 r0";
-	asm "$argc\ndec3 r0\nload8 r1 r0";
-	asm "pop16 r2";
-	asm "pop8 r3";
+	asm "$argc\nload8 r1 r0";
+	asm "$argv\nload16 r2 r0";
+	asm "$searchFlag\nload8 r3 r0";
 	asm "$SyscallIdExec";
 	asm "syscall";
 }
