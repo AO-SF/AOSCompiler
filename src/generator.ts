@@ -632,7 +632,7 @@ export class Generator {
 						name+=input[i];
 					}
 
-					// Generate code to move this symbol's address into r0, and add it to the inline asm
+					// Lookup symbol and mark as used
 					let symbol=this.currentScope.getSymbolByName(name);
 					if (symbol===null) {
 						this.printError('internal error - unhandled symbol type for \''+name+'\' (inline asm variable substitution)', quotedStringNode.tokens[0]);
@@ -672,13 +672,12 @@ export class Generator {
 
 				// Mark symbol as used
 				this.usedSymbols[lhsStorageSymbol.mangledName]=true;
-				// Calculate RHS value and push onto stack
+
+				// Recurse for RHS value
 				if (!this.generateNodePassUnusedSymbols(rhsNode))
 					return false;
 
-				this.globalStackAdjustment+=2;
-
-				// Node-type specific code to place destination address into r0
+				// Node-type specific logic
 				if (lhsNode.type==AstNodeType.ExpressionTerminal) {
 					// Ensure LHS is not an array
 					if (this.typeIsArray(lhsStorageSymbol.type)) {
@@ -688,13 +687,10 @@ export class Generator {
 				} else {
 					// lhsNode.type==AstNodeType.ExpressionDereference
 
-					// Generate code to place relevant array entry address into r0
+					// Recurse for dereference expression
 					if (!this.generateNodePassUnusedSymbols(lhsNode.children[0]))
 						return false;
 				}
-
-				// Store logic (address is in r0, pop RHS value off stack into r5)
-				this.globalStackAdjustment-=2;
 
 				return true;
 			} break;
@@ -708,73 +704,26 @@ export class Generator {
 				return true;
 			break;
 			case AstNodeType.ExpressionEquality:
-				// Generate LHS code and save value onto stack
+			case AstNodeType.ExpressionInequality:
+				// Recurse for LHS
 				if (!this.generateNodePassUnusedSymbols(node.children[0]))
 					return false;
 
-				this.globalStackAdjustment+=2;
-
-				// Generate RHS code and save value into r5
+				// Recurse for RHS
 				if (!this.generateNodePassUnusedSymbols(node.children[1]))
 					return false;
-
-				this.globalStackAdjustment-=2;
 
 				return true;
 			break;
-			case AstNodeType.ExpressionInequality: {
-				// Generate LHS code and save value onto stack
-				if (!this.generateNodePassUnusedSymbols(node.children[0]))
-					return false;
-
-				this.globalStackAdjustment+=2;
-
-				// Generate RHS code and save value into r5
-				if (!this.generateNodePassUnusedSymbols(node.children[1]))
-					return false;
-
-				this.globalStackAdjustment-=2;
-
-				return true;
-			} break;
-			case AstNodeType.ExpressionAddition: {
-				// Generate first-operand code and save value onto stack
-				if (!this.generateNodePassUnusedSymbols(node.children[0]))
-					return false;
-
-				this.globalStackAdjustment+=2;
-
-				// Loop over rest of the operands
-				for(let i=0; i<node.tokens.length; ++i) {
-					// Generate this operands code and place value in r5
-					if (!this.generateNodePassUnusedSymbols(node.children[i+1]))
+			case AstNodeType.ExpressionAddition:
+			case AstNodeType.ExpressionMultiplication:
+				// Loop over operands
+				for(let i=0; i<node.children.length; ++i)
+					if (!this.generateNodePassUnusedSymbols(node.children[i]))
 						return false;
-				}
-
-				// Pop result off stack
-				this.globalStackAdjustment-=2;
 
 				return true;
-			} break;
-			case AstNodeType.ExpressionMultiplication: {
-				// Generate first-operand code and save value onto stack
-				if (!this.generateNodePassUnusedSymbols(node.children[0]))
-					return false;
-
-				this.globalStackAdjustment+=2;
-
-				// Loop over rest of the operands
-				for(let i=0; i<node.tokens.length; ++i) {
-					// Generate this operands code and place value in r5
-					if (!this.generateNodePassUnusedSymbols(node.children[i+1]))
-						return false;
-				}
-
-				// Pop result off stack
-				this.globalStackAdjustment-=2;
-
-				return true;
-			} break;
+			break;
 			case AstNodeType.ExpressionTerminal: {
 				// No children? Must be literal
 				if (node.children.length==0) {
