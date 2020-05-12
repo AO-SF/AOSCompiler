@@ -218,8 +218,8 @@ export class Parser {
 				case AstNodeType.VariableDefinition:
 					// Open square bracket to indicate array definition?
 					if (token.text=='[') {
-						// Peek at next token - must be a number
-						if (input.length>0 && Parser.strIsNumber(input[0].text)) {
+						// Peek at next token - must be a terminal
+						if (input.length>0 && Parser.strIsTerminal(input[0].text)) {
 							currNode.tokens.push(input.shift()!);
 
 							// Peek at next token - must be a closing square bracket

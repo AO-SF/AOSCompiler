@@ -157,7 +157,31 @@ export class Generator {
 				// Array? Grab entryCount and update type
 				let entryCount=1;
 				if (node.tokens.length==1) {
-					entryCount=parseInt(node.tokens[0].text);
+					let countToken=node.tokens[0];
+					let countStr=countToken.text;
+					if (Parser.strIsNumber(countStr))
+						entryCount=parseInt(countStr);
+					else if (Parser.strIsSymbol(countStr)) {
+						// Lookup symbol
+						let symbol=this.currentScope.getSymbolByName(countStr);
+						if (symbol===null) {
+							this.printError('undefined symbol \''+countStr+'\' as array size', countToken);
+							return false;
+						}
+
+						// Symbol must be a define
+						if (!(symbol instanceof ScopeDefine)) {
+							this.printError('symbol \''+countStr+'\' is not a compile time constant (array size)', countToken);
+							return false;
+						}
+						let defineSymbol=symbol as ScopeDefine;
+
+						// Use define value as entry count
+						entryCount=defineSymbol.value;
+					} else {
+						this.printError('bad array size \''+countStr+'\'', countToken);
+						return false;
+					}
 					type+='[]';
 				}
 
@@ -399,6 +423,26 @@ export class Generator {
 			case AstNodeType.Name:
 			break;
 			case AstNodeType.VariableDefinition: {
+				let nameNode=node.children[0];
+				let name=nameNode.tokens[0].text;
+
+				// Array? Check entryCount for symbol
+				if (node.tokens.length==1) {
+					let countToken=node.tokens[0];
+					let countStr=countToken.text;
+					if (Parser.strIsSymbol(countStr)) {
+						// Lookup symbol
+						let symbol=this.currentScope.getSymbolByName(countStr);
+						if (symbol===null) {
+							this.printError('undefined symbol \''+countStr+'\' as array size', countToken);
+							return false;
+						}
+
+						// Mark symbol as used
+						this.usedSymbols[symbol.mangledName]=true;
+					}
+				}
+
 				return true;
 			} break;
 			case AstNodeType.FunctionDefinition: {
