@@ -1,7 +1,10 @@
+#include "lib/process.c"
+#include "lib/stdbool.c"
 #include "lib/stdio.c"
 #include "lib/string.c"
-#include "lib/process.c"
+#include "lib/syscall.c"
 
+#define readBufferSize 256
 uint8_t readBuffer[256]; // this is global as otherwise makes stack calculations more difficult/slower in runFd
 
 uint8_t pwdBuffer[64]; // used to hold pwd so we can update it in the case of a 'cd' command
@@ -18,13 +21,13 @@ uint16_t main(uint8_t argc, uint8_t **argv) {
 		uint8_t fd;
 
 		// Open file in read-only mode
-		fd=shellOpen(argv[i], 1);
-		if (fd==0) {
+		fd=shellOpen(argv[i], FdModeRO);
+		if (fd==FdInvalid) {
 			continue; // try next argument
 		}
 
 		// Execute file
-		if (runFd(fd, 0)==0) {
+		if (runFd(fd, false)==false) {
 			return 0;
 		}
 
@@ -33,17 +36,17 @@ uint16_t main(uint8_t argc, uint8_t **argv) {
 	}
 
 	// Run commands from stdin
-	runFd(1, 1); // stdin fd = 1, interactive mode = true
+	runFd(FdStdin, true);
 
 	return 0;
 }
 
-// Reads and executes commands from given fd. Returns 1 unless exit was called in which case 0 is returned.
+// Reads and executes commands from given fd. Returns true unless exit was called in which case false is returned.
 uint8_t runFd(uint8_t fd, uint8_t interactiveMode) {
 	// Input loop
 	uint16_t readOffset;
 	readOffset=0;
-	while(1) {
+	while(true) {
 		uint8_t *ptr;
 
 		// If in interactive mode then print a prompt consisting of pwd and dollar character
@@ -55,7 +58,7 @@ uint8_t runFd(uint8_t fd, uint8_t interactiveMode) {
 		// Read line from fd
 		// TODO: use 32 bit version of fgets to handle large files
 		uint16_t readCount;
-		readCount=fgets(fd, readOffset, readBuffer, 256);
+		readCount=fgets(fd, readOffset, readBuffer, readBufferSize);
 		if (readCount==0) {
 			break; // end of file
 		}
@@ -87,7 +90,7 @@ uint8_t runFd(uint8_t fd, uint8_t interactiveMode) {
 
 		// Check for builtin command
 		if (strcmp(readBuffer, "exit")==0) {
-			return 0;
+			return false;
 		}
 		if (strcmp(readBuffer, "cd")==0) {
 			// If no arguments then assume home directory
@@ -104,7 +107,7 @@ uint8_t runFd(uint8_t fd, uint8_t interactiveMode) {
 			}
 
 			// Check directory exists
-			if (isDir(ptr)==0) {
+			if (isDir(ptr)==false) {
 				puts("no such directory: ");
 				puts(ptr);
 				puts("\n");
@@ -121,14 +124,14 @@ uint8_t runFd(uint8_t fd, uint8_t interactiveMode) {
 		uint8_t forkRet;
 		forkRet=fork();
 
-		if (forkRet==16) { // PidMax=16
+		if (forkRet==PidMax) {
 			puts("could not fork\n");
 
 			// in interactiveMode let user try again, but if part of a file we cannot continue as this command may be critical
 			if (interactiveMode) {
 				continue;
 			}
-			return 1;
+			return true;
 		}
 
 		if (forkRet>0) {
@@ -142,7 +145,7 @@ uint8_t runFd(uint8_t fd, uint8_t interactiveMode) {
 			// child
 
 			// use exec syscall to replace process
-			exec(argc, readBuffer, 1);
+			exec(argc, readBuffer, SyscallExecPathFlagSearch);
 
 			// exec only returns on error
 			puts("could not exec\n");
@@ -150,6 +153,6 @@ uint8_t runFd(uint8_t fd, uint8_t interactiveMode) {
 		}
 	}
 
-	// Return 1 to indicate we should move onto the next input file/stdin
-	return 1;
+	// Return true to indicate we should move onto the next input file/stdin
+	return true;
 }

@@ -1,5 +1,16 @@
 #include "string.c"
 
+#define FdInvalid 0
+#define FdStdin 1
+#define FdStdout 2
+
+#define FdModeNone 0
+#define FdModeRO 1
+#define FdModeWO 2
+#define FdModeRW 3
+
+#define PathMax 64
+
 uint8_t open(uint8_t *path, uint8_t mode) {
 	asm "$path\nload16 r0 r0\npush16 r0";
 	asm "$mode\ndec2 r0\nload8 r2 r0";
@@ -23,15 +34,15 @@ void close(uint8_t fd) {
 }
 
 void puts(uint8_t *str) {
-	fputs(2, str); // FdStdout=2
+	fputs(FdStdout, str);
 }
 
 void putc(uint8_t c) {
-	fputc(2, c); // FdStdout=2
+	fputc(FdStdout, c);
 }
 
 void putd(uint16_t x, uint16_t padding) {
-	fputd(2, x, padding);
+	fputd(FdStdout, x, padding);
 }
 
 // padding treated same as for inttostr

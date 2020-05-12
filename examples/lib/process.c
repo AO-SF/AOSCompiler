@@ -1,6 +1,12 @@
 #include "stdio.c"
 #include "string.c"
 
+#define PidMax 16
+#define ArgLenMax 64
+#define EnvVarPathMax 128
+#define MaxFds 9 // maximum amount of open files a single process can have (although local fd=0 is used for invalid so there are really only 8 available)
+#define ArgMax 255
+
 void exit(uint16_t status) {
 	asm "$status\nload16 r1 r0";
 	asm "mov r0 SyscallIdExit";
