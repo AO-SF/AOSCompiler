@@ -5,9 +5,9 @@
 #include "lib/syscall.c"
 
 #define readBufferSize 256
-uint8_t readBuffer[256]; // this is global as otherwise makes stack calculations more difficult/slower in runFd
+uint8_t readBuffer[readBufferSize]; // this is global as otherwise makes stack calculations more difficult/slower in runFd
 
-uint8_t pwdBuffer[64]; // used to hold pwd so we can update it in the case of a 'cd' command
+uint8_t pwdBuffer[PathMax]; // used to hold pwd so we can update it in the case of a 'cd' command
 
 uint16_t main(uint8_t argc, uint8_t **argv) {
 	// Copy current pwd into our own buffer,
