@@ -1,4 +1,5 @@
 #include "string.c"
+#include "syscall.c"
 
 #define FdInvalid 0
 #define FdStdin 1
@@ -15,7 +16,7 @@ uint8_t open(uint8_t *path, uint8_t mode) {
 	asm "$path\nload16 r0 r0\npush16 r0";
 	asm "$mode\ndec2 r0\nload8 r2 r0";
 	asm "pop16 r1";
-	asm "mov r0 SyscallIdOpen";
+	asm "$SyscallIdOpen";
 	asm "syscall";
 
 	uint8_t fd;
@@ -29,7 +30,7 @@ uint8_t open(uint8_t *path, uint8_t mode) {
 
 void close(uint8_t fd) {
 	asm "$fd\nload8 r1 r0";
-	asm "mov r0 SyscallIdClose";
+	asm "$SyscallIdClose";
 	asm "syscall";
 }
 
@@ -65,7 +66,7 @@ void fputs(uint8_t fd, uint8_t *str) {
 	asm "pop16 r3"; // str
 	asm "pop8 r1"; // fd
 	asm "mov r2 0"; // offset=0
-	asm "mov r0 SyscallIdWrite";
+	asm "$SyscallIdWrite";
 	asm "syscall";
 }
 
@@ -75,7 +76,7 @@ void fputc(uint8_t fd, uint8_t c) {
 	asm "pop8 r1"; // fd
 	asm "mov r4 1"; // len=1
 	asm "mov r2 0"; // offset=0
-	asm "mov r0 SyscallIdWrite";
+	asm "$SyscallIdWrite";
 	asm "syscall";
 }
 
@@ -87,7 +88,7 @@ uint16_t read(uint8_t fd, uint16_t offset, uint8_t *data, uint16_t len) {
 	asm "pop16 r3"; // data
 	asm "pop16 r2"; // offset
 	asm "pop8 r1"; // fd
-	asm "mov r0 SyscallIdRead";
+	asm "$SyscallIdRead";
 	asm "syscall";
 
 	uint16_t count;
@@ -174,7 +175,7 @@ void inttostr(uint8_t *str, uint16_t x, uint16_t padding) {
 
 uint8_t isDir(uint8_t *path) {
 	asm "$path\nload16 r1 r0";
-	asm "mov r0 SyscallIdIsDir";
+	asm "$SyscallIdIsDir";
 	asm "syscall";
 
 	uint8_t ret;
@@ -188,7 +189,7 @@ uint8_t isDir(uint8_t *path) {
 
 uint8_t fileExists(uint8_t *path) {
 	asm "$path\nload16 r1 r0";
-	asm "mov r0 SyscallIdFileExists";
+	asm "$SyscallIdFileExists";
 	asm "syscall";
 
 	uint8_t ret;

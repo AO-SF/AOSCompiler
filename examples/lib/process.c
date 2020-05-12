@@ -1,5 +1,6 @@
 #include "stdio.c"
 #include "string.c"
+#include "syscall.c"
 
 #define PidMax 16
 #define ArgLenMax 64
@@ -9,12 +10,12 @@
 
 void exit(uint16_t status) {
 	asm "$status\nload16 r1 r0";
-	asm "mov r0 SyscallIdExit";
+	asm "$SyscallIdExit";
 	asm "syscall";
 }
 
 uint8_t *getPwd() {
-	asm "mov r0 SyscallIdEnvGetPwd";
+	asm "$SyscallIdEnvGetPwd";
 	asm "syscall";
 
 	uint8_t *pwd;
@@ -28,12 +29,12 @@ uint8_t *getPwd() {
 
 void setPwd(uint8_t *pwd) {
 	asm "$pwd\nload16 r1 r0";
-	asm "mov r0 SyscallIdEnvSetPwd";
+	asm "$SyscallIdEnvSetPwd";
 	asm "syscall";
 }
 
 uint8_t *getPath() {
-	asm "mov r0 SyscallIdEnvGetPath";
+	asm "$SyscallIdEnvGetPath";
 	asm "syscall";
 
 	uint8_t *path;
@@ -47,12 +48,12 @@ uint8_t *getPath() {
 
 void setPath(uint8_t *path) {
 	asm "$path\nload16 r1 r0";
-	asm "mov r0 SyscallIdEnvSetPath";
+	asm "$SyscallIdEnvSetPath";
 	asm "syscall";
 }
 
 uint8_t fork() {
-	asm "mov r0 SyscallIdFork";
+	asm "$SyscallIdFork";
 	asm "syscall";
 
 	uint8_t ret;
@@ -68,7 +69,7 @@ void waitpid(uint8_t pid, uint16_t timeoutSeconds) {
 	asm "$timeoutSeconds\nload16 r0 r0\npush16 r0";
 	asm "$pid\ndec2 r0\nload8 r1 r0";
 	asm "pop16 r2";
-	asm "mov r0 SyscallIdWaitPid";
+	asm "$SyscallIdWaitPid";
 	asm "syscall";
 }
 
@@ -78,7 +79,7 @@ void exec(uint8_t argc, uint8_t *argv, uint8_t searchFlag) {
 	asm "$argc\ndec3 r0\nload8 r1 r0";
 	asm "pop16 r2";
 	asm "pop8 r3";
-	asm "mov r0 SyscallIdExec";
+	asm "$SyscallIdExec";
 	asm "syscall";
 }
 

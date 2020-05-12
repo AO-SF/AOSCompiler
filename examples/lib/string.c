@@ -1,8 +1,10 @@
+#include "syscall.c"
+
 uint8_t *strchr(uint8_t *str, uint8_t c) {
 	asm "$c\nload8 r0 r0\npush8 r0";
 	asm "$str\ndec r0\nload16 r1 r0";
 	asm "pop8 r2";
-	asm "mov r0 SyscallIdStrChr";
+	asm "$SyscallIdStrChr";
 	asm "syscall";
 
 	uint8_t *ret;
@@ -18,7 +20,7 @@ uint8_t *strchrnul(uint8_t *str, uint8_t c) {
 	asm "$c\nload8 r0 r0\npush8 r0";
 	asm "$str\ndec r0\nload16 r1 r0";
 	asm "pop8 r2";
-	asm "mov r0 SyscallIdStrChrNul";
+	asm "$SyscallIdStrChrNul";
 	asm "syscall";
 
 	uint8_t *ret;
@@ -35,7 +37,7 @@ uint8_t strcmp(uint8_t *a, uint8_t *b) {
 	asm "$a\ndec2 r0\nload16 r1 r0";
 	asm "pop16 r2";
 
-	asm "mov r0 SyscallIdStrCmp";
+	asm "$SyscallIdStrCmp";
 	asm "syscall";
 
 	uint8_t ret;
@@ -67,6 +69,6 @@ void memmove(void *dest, void *src, uint16_t n) {
 	asm "pop16 r2";
 	asm "pop16 r3";
 
-	asm "mov r0 SyscallIdMemMove";
+	asm "$SyscallIdMemMove";
 	asm "syscall";
 }
