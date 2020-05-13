@@ -838,9 +838,9 @@ export class Generator {
 				outputStart+='mov r1 0 ; argv loop index\n';
 				outputStart+='label argvLoopStart\n';
 
-				outputStart+='mov r0 '+Syscall.ArgvN+'\n';
+				outputStart+='mov r0 '+Syscall.ArgvN+' ; grab an arg\n';
 				outputStart+='syscall\n';
-				outputStart+='cmp r5 r0 r0\n';
+				outputStart+='cmp r5 r0 r0 ; no such argument?\n';
 				outputStart+='skipneqz r5\n';
 				outputStart+='jmp argvLoopEnd\n';
 
@@ -859,7 +859,7 @@ export class Generator {
 				}
 				outputStart+='call '+mainFunction.mangledName+'\n';
 				outputStart+='mov r1 r0\n';
-				outputStart+='mov r0 '+Syscall.Exit+'\n';
+				outputStart+='mov r0 '+Syscall.Exit+' ; invoke Exit syscall\n';
 				outputStart+='syscall\n';
 
 				outputStart+='\n';
@@ -938,10 +938,10 @@ export class Generator {
 				outputStart+='; User defined function \''+func.name+'\'\n';
 				outputStart+='label '+func.mangledName+'\n';
 				if (variableAllocationSize>64) {
-					outputStart+='mov r5 '+variableAllocationSize+'\n';
+					outputStart+='mov r5 '+variableAllocationSize+' ; allocate stack variables\n';
 					outputStart+='add r6 r6 r5\n';
 				} else if (variableAllocationSize>0)
-					outputStart+='inc'+variableAllocationSize+' r6\n';
+					outputStart+='inc'+variableAllocationSize+' r6 ; allocate stack variables\n';
 
 				// Leave function scope
 				if (!this.generateNodePassCodeLeaveScope())
@@ -953,11 +953,11 @@ export class Generator {
 				let outputEnd='';
 				outputEnd+='label '+func.mangledName+'_end\n';
 				if (variableAllocationSize>64) {
-					outputEnd+='mov r5 '+variableAllocationSize+'\n';
+					outputEnd+='mov r5 '+variableAllocationSize+' ; free stack variables\n';
 					outputEnd+='sub r6 r6 r5\n';
 				} else if (variableAllocationSize>0)
-					outputEnd+='dec'+variableAllocationSize+' r6\n';
-				outputEnd+='ret\n';
+					outputEnd+='dec'+variableAllocationSize+' r6 ; free stack variables\n';
+				outputEnd+='ret ; end of function \''+func.name+'\'\n';
 
 				// Combine output code produced above (and add empty line after function)
 				let output='';
@@ -1006,7 +1006,7 @@ export class Generator {
 				}
 
 				// Generate code to create label
-				return 'label '+symbol.mangledName+'\n';
+				return 'label '+symbol.mangledName+' ; user defined label \''+name+'\'\n';
 			} break;
 			case AstNodeType.Statement: {
 				let output='';
@@ -1032,7 +1032,7 @@ export class Generator {
 				}
 
 				// Generate code to jump to continue label
-				output+='jmp '+continueLabel+'\n';
+				output+='jmp '+continueLabel+' ; continue\n';
 
 				return output;
 			} break;
@@ -1047,7 +1047,7 @@ export class Generator {
 				}
 
 				// Generate code to jump to break label
-				output+='jmp '+breakLabel+'\n';
+				output+='jmp '+breakLabel+' ; break\n';
 
 				return output;
 			} break;
@@ -1068,7 +1068,7 @@ export class Generator {
 					this.printError('\'return\' statement not in function scope', node.tokens[0]);
 					return null;
 				}
-				output+='jmp '+funcMangledName+'_end\n';
+				output+='jmp '+funcMangledName+'_end ; return\n';
 
 				return output;
 			} break;
@@ -1093,7 +1093,7 @@ export class Generator {
 				if (conditionOutput===null)
 					return null;
 				output+=conditionOutput;
-				output+='cmp r0 r0 r0\n';
+				output+='cmp r0 r0 r0 ; while condition false?\n';
 				output+='skipneqz r0\n';
 				output+='jmp '+breakLabel+'\n';
 
@@ -1143,7 +1143,7 @@ export class Generator {
 				if (conditionOutput===null)
 					return null;
 				output+=conditionOutput;
-				output+='cmp r0 r0 r0\n';
+				output+='cmp r0 r0 r0 ; for condition false?\n';
 				output+='skipneqz r0\n';
 				output+='jmp '+breakLabel+'\n';
 
@@ -1188,7 +1188,7 @@ export class Generator {
 				if (conditionOutput===null)
 					return null;
 				output+=conditionOutput;
-				output+='cmp r0 r0 r0\n';
+				output+='cmp r0 r0 r0 ; if condition false?\n';
 				output+='skipneqz r0\n';
 				output+='jmp '+endLabel+'\n';
 
@@ -1228,16 +1228,17 @@ export class Generator {
 				}
 
 				// Generate code to jump to label
-				return 'jmp '+symbol.mangledName+'\n';
+				return 'jmp '+symbol.mangledName+' ; goto \''+name+'\'\n';
 			} break;
 			case AstNodeType.StatementInlineAsm: {
 				let quotedStringNode=node.children[0];
+
+				let output='';
 
 				// Unescape string (replace e.g. '\' followed by 'n' with single genuine newline)
 				let input=this.parseQuotedString(quotedStringNode.tokens[0].text, quotedStringNode.tokens[0])+'\n';
 
 				// Check if any variables should be substituted in.
-				let output='';
 				for(let i=0; i<input.length; ++i) {
 					// Check for '$' indicating start of variable which should be substituted
 					if (input[i]!='$') {
@@ -1337,7 +1338,7 @@ export class Generator {
 				}
 
 				// Calculate RHS value and place into r0 (saving destination address on the stack then restoring into r5)
-				output+='push16 r0\n';
+				output+='push16 r0 ; assignment protect dest\n';
 				this.globalStackAdjustment+=2;
 
 				let rhsOutput=this.generateNodePassCode(rhsNode);
@@ -1346,12 +1347,12 @@ export class Generator {
 				output+=rhsOutput;
 
 				this.globalStackAdjustment-=2;
-				output+='pop16 r5\n';
+				output+='pop16 r5 ; assignment restore dest\n';
 
 				// Store logic (address is in r5, RHS value in r0)
 				switch(storeSize) {
-					case 1: output+='store8 r5 r0\n'; break;
-					case 2: output+='store16 r5 r0\n'; break;
+					case 1: output+='store8 r5 r0 ; assignment to \''+lhsStorageSymbol.name+'\'\n'; break;
+					case 2: output+='store16 r5 r0 ; assignment to \''+lhsStorageSymbol.name+'\'\n'; break;
 					default:
 						// TODO: this
 						this.printError('internal error - unimplemented large-variable logic (assignment)', lhsNode.tokens[0]);
@@ -1380,7 +1381,7 @@ export class Generator {
 					output+=childOutput;
 
 					// If r0 is non-zero then entire OR expression must be true
-					output+='cmp r0 r0 r0\n';
+					output+='cmp r0 r0 r0 ; logical OR short circuit?\n';
 					output+='skipeqz r0\n';
 					output+='jmp '+trueLabel+'\n';
 				}
@@ -1415,7 +1416,7 @@ export class Generator {
 					output+=childOutput;
 
 					// If r0 is zero then entire AND expression must be false
-					output+='cmp r0 r0 r0\n';
+					output+='cmp r0 r0 r0 ; logic AND short circuit?\n';
 					output+='skipneqz r0\n';
 					output+='jmp '+falseLabel+'\n';
 				}
@@ -1442,7 +1443,7 @@ export class Generator {
 					return null;
 
 				output+=lhsOutput;
-				output+='push16 r0\n';
+				output+='push16 r0 ; protect equality LHS\n';
 				this.globalStackAdjustment+=2;
 
 				// Generate RHS code and save value into r5
@@ -1451,12 +1452,12 @@ export class Generator {
 					return null;
 
 				output+=rhsOutput;
-				output+='mov r5 r0\n';
+				output+='mov r5 r0 ; equality RHS\n';
 
 				// Compare code
 				this.globalStackAdjustment-=2;
-				output+='pop16 r0\n';
-				output+='cmp r5 r0 r5\n';
+				output+='pop16 r0 ; restore equality LHS\n';
+				output+='cmp r5 r0 r5 ; equality comparison\n';
 				output+='mov r0 1\n';
 				switch(node.tokens[0].text) {
 					case '==': output+='skipeq r5\n'; break;
@@ -1479,7 +1480,7 @@ export class Generator {
 					return null;
 
 				output+=lhsOutput;
-				output+='push16 r0\n';
+				output+='push16 r0 ; protect inequality LHS\n';
 				this.globalStackAdjustment+=2;
 
 				// Generate RHS code and save value into r5
@@ -1488,12 +1489,12 @@ export class Generator {
 					return null;
 
 				output+=rhsOutput;
-				output+='mov r5 r0\n';
+				output+='mov r5 r0 ; inequality RHS\n';
 
 				// Compare code
 				this.globalStackAdjustment-=2;
-				output+='pop16 r0\n';
-				output+='cmp r5 r0 r5\n';
+				output+='pop16 r0 ; restore inequality LHS\n';
+				output+='cmp r5 r0 r5 ; inequality comparison\n';
 				output+='mov r0 1\n';
 				switch(node.tokens[0].text) {
 					case '<': output+='skiplt r5\n'; break;
@@ -1530,7 +1531,7 @@ export class Generator {
 					return null;
 
 				output+=firstOutput;
-				output+='push16 r0\n';
+				output+='push16 r0 ; protect add/sub accum\n';
 				this.globalStackAdjustment+=2;
 
 				// Loop over rest of the operands
@@ -1545,16 +1546,16 @@ export class Generator {
 
 					// Execute operation
 					this.globalStackAdjustment-=2;
-					output+='pop16 r0\n'; // restore previous operand
+					output+='pop16 r0 ; restore add/sub accum\n'; // restore previous operand
 					if (node.tokens[i].text=='+')
-						output+='add r0 r0 r5\n';
+						output+='add r0 r0 r5 ; add operation\n';
 					else if (node.tokens[i].text=='-')
-						output+='sub r0 r0 r5\n';
+						output+='sub r0 r0 r5 ; sub operation\n';
 
 					// Save result to stack so we can compute next operand
 					// (unless no more operands)
 					if (i+1<node.tokens.length) {
-						output+='push16 r0\n';
+						output+='push16 r0 ; protect add/sub accum\n';
 						this.globalStackAdjustment+=2;
 					}
 				}
@@ -1582,7 +1583,7 @@ export class Generator {
 					return null;
 
 				output+=firstOutput;
-				output+='push16 r0\n';
+				output+='push16 r0 ; protect mul/div accum\n';
 				this.globalStackAdjustment+=2;
 
 				// Loop over rest of the operands
@@ -1593,20 +1594,20 @@ export class Generator {
 						return null;
 
 					output+=loopOutput;
-					output+='mov r5 r0\n';
+					output+='mov r5 r0 ; restore mul/div accum '+(i+1)+'\n';
 
 					// Execute operation
 					this.globalStackAdjustment-=2;
 					output+='pop16 r0\n'; // restore previous operand
 					if (node.tokens[i].text=='*')
-						output+='mul r0 r0 r5\n';
+						output+='mul r0 r0 r5 ; mul operation\n';
 					else if (node.tokens[i].text=='/')
-						output+='div r0 r0 r5\n';
+						output+='div r0 r0 r5 ; div operaetion\n';
 
 					// Save result to stack so we can compute next operand
 					// (unless no more operands)
 					if (i+1<node.tokens.length) {
-						output+='push16 r0\n';
+						output+='push16 r0 ; protect mul/div accum\n';
 						this.globalStackAdjustment+=2;
 					}
 				}
@@ -1620,7 +1621,7 @@ export class Generator {
 
 					// Terminal is literal number?
 					if (Parser.strIsNumber(terminalStr))
-						return 'mov r0 '+terminalStr+'\n';
+						return 'mov r0 '+terminalStr+' ; number literal\n';
 
 					// Terminal is symbol name?
 					let outputSymbolValue=this.generateSymbolValueByName(terminalStr);
@@ -1668,8 +1669,8 @@ export class Generator {
 					}
 
 					switch(expectedArgument.typeSize) {
-						case 1: output+='push8 r0\n'; break;
-						case 2: output+='push16 r0\n'; break;
+						case 1: output+='push8 r0 ; push arg \''+expectedArgument.name+'\'\n'; break;
+						case 2: output+='push16 r0 ; push arg \''+expectedArgument.name+'\'\n'; break;
 						default:
 							// TODO: this
 							this.printError('internal error - unimplemented large-variable logic (calling function \''+func.name+'\')', node.children[i].tokens[0]);
@@ -1688,10 +1689,10 @@ export class Generator {
 
 				// Add instruction to restore stack after pushing arguments (if any)
 				if (asmArgumentStackAdjustment>64) {
-					output+='mov r5 '+asmArgumentStackAdjustment+'\n';
+					output+='mov r5 '+asmArgumentStackAdjustment+' ; remove args from stack\n';
 					output+='sub r6 r6 r5\n';
 				} else if (asmArgumentStackAdjustment>0) {
-					output+='dec'+asmArgumentStackAdjustment+' r6\n';
+					output+='dec'+asmArgumentStackAdjustment+' r6 ; remove args from stack\n';
 				}
 
 				return output;
@@ -1725,10 +1726,10 @@ export class Generator {
 				let dereferencedType=this.typeDereference(storageSymbol.type)!; // ! is safe as above function would have failed otherwise
 				switch(this.typeToSize(dereferencedType)) {
 					case 1:
-						output+='load8 r0 r0\n';
+						output+='load8 r0 r0 ; dereference \''+storageSymbol.name+'\'\n';
 					break;
 					case 2:
-						output+='load16 r0 r0\n';
+						output+='load16 r0 r0 ; dereference \''+storageSymbol.name+'\'\n';
 					break;
 					default:
 						// TODO: this
@@ -1806,7 +1807,7 @@ export class Generator {
 		// Define?
 		if (symbol instanceof ScopeDefine) {
 			let defineSymbol=symbol as ScopeDefine;
-			return 'mov r0 '+defineSymbol.value.toString()+'\n';
+			return 'mov r0 '+defineSymbol.value.toString()+' ; value of define \''+defineSymbol.name+'\' \n';
 		}
 
 		// Storage symbol (variable or argument)?
@@ -1824,8 +1825,8 @@ export class Generator {
 			// Note: we skip this for arrays as their base address is their value when used in an expression
 			if (!this.typeIsArray(storageSymbol.type)) {
 				switch(storageSymbol.typeSize) {
-					case 1: output+='load8 r0 r0\n'; break;
-					case 2: output+='load16 r0 r0\n'; break;
+					case 1: output+='load8 r0 r0 ; load value of \''+symbol.name+'\'\n'; break;
+					case 2: output+='load16 r0 r0 ; load value of \''+symbol.name+'\'\n'; break;
 					default:
 						return null;
 					break;
@@ -1850,12 +1851,12 @@ export class Generator {
 			// Automatic variable
 			let stackAdjustment=this.globalStackAdjustment+variable.getStackAdjustment();
 			if (stackAdjustment==0)
-				output+='mov r0 r6\n';
+				output+='mov r0 r6 ; get variable \''+variable.name+'\' address\n';
 			else if (stackAdjustment<=64) {
-				output+='mov r0 r6\n';
+				output+='mov r0 r6 ; get variable \''+variable.name+'\' address\n';
 				output+='dec'+stackAdjustment+' r0\n';
 			} else {
-				output+='mov r0 '+stackAdjustment+'\n';
+				output+='mov r0 '+stackAdjustment+' ; get variable \''+variable.name+'\' address\n';
 				output+='sub r0 r6 r0\n';
 			}
 		}
@@ -1870,12 +1871,12 @@ export class Generator {
 
 		let stackAdjustment=this.globalStackAdjustment+argument.getStackAdjustment();
 		if (stackAdjustment==0)
-			output+='mov r0 r6\n';
+			output+='mov r0 r6 ; get arg \''+argument.name+'\' address\n';
 		else if (stackAdjustment<=64) {
-			output+='mov r0 r6\n';
+			output+='mov r0 r6 ; get arg \''+argument.name+'\' address\n';
 			output+='dec'+stackAdjustment+' r0\n';
 		} else {
-			output+='mov r0 '+stackAdjustment+'\n';
+			output+='mov r0 '+stackAdjustment+' ; get arg \''+argument.name+'\' address\n';
 			output+='sub r0 r6 r0\n';
 		}
 
@@ -1917,11 +1918,11 @@ export class Generator {
 
 		switch(this.typeToSize(dereferencedType)) {
 			case 1:
-				output+='add r0 r0 r5\n';
+				output+='add r0 r0 r5 ; offset dereference addr\n';
 			break;
 			case 2:
 				// easier to add twice rather than try to multiply then add
-				output+='add r0 r0 r5\n';
+				output+='add r0 r0 r5 ; offset dereference addr\n';
 				output+='add r0 r0 r5\n';
 			break;
 			default:
