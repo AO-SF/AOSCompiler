@@ -30,69 +30,64 @@ export class Generator {
 			return null;
 		console.assert(this.globalStackAdjustment==0, "global stack adjustment not 0 after scopes pass");
 
-		// Pass to find unused symbols
-		let unusedSymbolChange:boolean;
-		do {
+		// Pass to find symbol lifetime (and thus unused symbols)
+		while(true) {
 			// Reset state and recalculate used symbols
-			unusedSymbolChange=false;
+			let symbolLifetimePassChange=false;
 			this.usedSymbols={};
-			if (!this.generateNodePassUnusedSymbols(rootNode))
+			if (!this.generateNodePassSymbolLifetimes(rootNode))
 				return null;
-			console.assert(this.globalStackAdjustment==0, "global stack adjustment not 0 after unused symbols pass");
+			console.assert(this.globalStackAdjustment==0, 'global stack adjustment not 0 after symbol lifetime pass');
 
 			let symbolList=this.globalScope.getSymbolList();
 
-			// First look for unused functions
+			// Look for unused functions (on which we can perform dead code elimination)
 			for(let i=0; i<symbolList.length; ++i) {
 				let symbol=symbolList[i];
 
-				// Is this symbol used?
-				if (this.usedSymbols[symbol.mangledName])
-					continue;
-
-				// Not a function?
-				if (!(symbol instanceof ScopeFunction))
+				// Is this symbol used or not a function?
+				if (this.usedSymbols[symbol.mangledName] || !(symbol instanceof ScopeFunction))
 					continue;
 
 				// Remove function definition node from AST
 				let functionNode=rootNode.getFunctionDefinitionNode(symbol.name);
 				if (functionNode===null) {
-					console.log('Internal error - could not get AST node for function \''+symbol.name+'\' in unused symbol pass');
+					console.log('Internal error - could not get AST node for function \''+symbol.name+'\' in symbol lifetime pass');
 					return null;
 				}
 
 				if (!functionNode.remove()) {
-					console.log('Internal error - could not remove AST node for function \''+symbol.name+'\' in unused symbol pass');
+					console.log('Internal error - could not remove AST node for function \''+symbol.name+'\' in symbol lifetime pass');
 					return null;
 				}
 
 				// Remove function's body scope
 				let functionBodyScope=symbol.getBodyScope();
 				if (functionBodyScope===null) {
-					console.log('Internal error - could not get body scope for function \''+symbol.name+'\' in unused symbol pass');
+					console.log('Internal error - could not get body scope for function \''+symbol.name+'\' in symbol lifetime pass');
 					return null;
 				}
 
 				if (!functionBodyScope.parent!.remove(functionBodyScope.name)) {
-					console.log('Internal error - could not remove body scope for function \''+symbol.name+'\' in unused symbol pass');
+					console.log('Internal error - could not remove body scope for function \''+symbol.name+'\' in symbol lifetime pass');
 					return null;
 				}
 
 				// Remove function symbol itself from containing scope
 				if (!symbol.scope.removeSymbol(symbol.name)) {
-					console.log('Internal error - could not remove scope symnol for function \''+symbol.name+'\' in unused symbol pass');
+					console.log('Internal error - could not remove scope symnol for function \''+symbol.name+'\' in symbol lifetime pass');
 					return null;
 				}
 
 				// Indicate a change has occurred so that we try again (there may now be even more to remove)
-				unusedSymbolChange=true;
+				symbolLifetimePassChange=true;
 			}
 
-			// If any functions have been removed due to being unused, then re-run unused symbol check as there may now be others.
-			if (unusedSymbolChange)
+			// If any functions have been removed due to being unused, then re-run symbol lifetime pass as there may now be others.
+			if (symbolLifetimePassChange)
 				continue;
 
-			// If no unused functions, look for other types of unused symbols
+			// If no unused functions, look for other types of unused symbols to warn about
 			for(let i=0; i<symbolList.length; ++i) {
 				let symbol=symbolList[i];
 
@@ -106,11 +101,14 @@ export class Generator {
 				} else if (symbol instanceof ScopeLabel) {
 					console.log('Warning - unused label \''+symbol.name+'\' (defined in '+symbol.definitionToken.location.toString()+')');
 				} else if (!(symbol instanceof ScopeDefine)) { // we do not warn about unused defines as these are expected
-					console.log('Internal error - bad symbol type for \''+symbol.name+'\' in unused symbol pass');
+					console.log('Internal error - bad symbol type for \''+symbol.name+'\' in symbol lifetime pass');
 					return null;
 				}
 			}
-		} while(unusedSymbolChange);
+
+			// Done with symbol lifetime pass
+			break;
+		}
 
 		// Final pass to generate asm code
 		let ret=this.generateNodePassCode(rootNode);
@@ -388,12 +386,12 @@ export class Generator {
 		return false;
 	}
 
-	private generateNodePassUnusedSymbols(node: AstNode):boolean {
+	private generateNodePassSymbolLifetimes(node: AstNode):boolean {
 		switch(node.type) {
 			case AstNodeType.Root: {
 				// Recurse to handle children
 				for(let i=0; i<node.children.length; ++i)
-					if (!this.generateNodePassUnusedSymbols(node.children[i]))
+					if (!this.generateNodePassSymbolLifetimes(node.children[i]))
 						return false;
 
 				// Mark main function symbol as used
@@ -468,7 +466,7 @@ export class Generator {
 					return false;
 
 				// Recurse for child Block node
-				if (!this.generateNodePassUnusedSymbols(bodyNode))
+				if (!this.generateNodePassSymbolLifetimes(bodyNode))
 					return false;
 
 				// Leave function scope
@@ -485,7 +483,7 @@ export class Generator {
 			case AstNodeType.Block: {
 				// Recurse to handle children
 				for(let i=0; i<node.children.length; ++i)
-					if (!this.generateNodePassUnusedSymbols(node.children[i]))
+					if (!this.generateNodePassSymbolLifetimes(node.children[i]))
 						return false;
 
 				return true;
@@ -496,7 +494,7 @@ export class Generator {
 			case AstNodeType.Statement: {
 				// Recurse to handle children
 				for(let i=0; i<node.children.length; ++i)
-					if (!this.generateNodePassUnusedSymbols(node.children[i]))
+					if (!this.generateNodePassSymbolLifetimes(node.children[i]))
 						return false;
 
 				return true;
@@ -510,7 +508,7 @@ export class Generator {
 			case AstNodeType.StatementReturn: {
 				// Recurse to handle children
 				for(let i=0; i<node.children.length; ++i)
-					if (!this.generateNodePassUnusedSymbols(node.children[i]))
+					if (!this.generateNodePassSymbolLifetimes(node.children[i]))
 						return false;
 
 				return true;
@@ -523,14 +521,14 @@ export class Generator {
 				let mangledPrefix=this.currentScope.genNewSymbolMangledPrefix(node.id)+'_while';
 
 				// Condition checking
-				if (!this.generateNodePassUnusedSymbols(conditionNode))
+				if (!this.generateNodePassSymbolLifetimes(conditionNode))
 					return false;
 
 				// Body
 				if (!this.generateNodePassCodeEnterScope(mangledPrefix+'body'))
 					return false;
 
-				if (!this.generateNodePassUnusedSymbols(bodyNode))
+				if (!this.generateNodePassSymbolLifetimes(bodyNode))
 					return false;
 
 				if (!this.generateNodePassCodeLeaveScope())
@@ -548,25 +546,25 @@ export class Generator {
 				let mangledPrefix=this.currentScope.genNewSymbolMangledPrefix(node.id)+'_for';
 
 				// Generate initialisation code
-				if (!this.generateNodePassUnusedSymbols(initNode))
+				if (!this.generateNodePassSymbolLifetimes(initNode))
 					return false;
 
 				// Condition checking
-				if (!this.generateNodePassUnusedSymbols(conditionNode))
+				if (!this.generateNodePassSymbolLifetimes(conditionNode))
 					return false;
 
 				// Generate body code
 				if (!this.generateNodePassCodeEnterScope(mangledPrefix+'body'))
 					return false;
 
-				if (!this.generateNodePassUnusedSymbols(bodyNode))
+				if (!this.generateNodePassSymbolLifetimes(bodyNode))
 					return false;
 
 				if (!this.generateNodePassCodeLeaveScope())
 					return false;
 
 				// Generate 'increment' code
-				if (!this.generateNodePassUnusedSymbols(incrementNode))
+				if (!this.generateNodePassSymbolLifetimes(incrementNode))
 					return false;
 
 				return true;
@@ -579,14 +577,14 @@ export class Generator {
 				let mangledPrefix=this.currentScope.genNewSymbolMangledPrefix(node.id)+'_if';
 
 				// Condition checking
-				if (!this.generateNodePassUnusedSymbols(conditionNode))
+				if (!this.generateNodePassSymbolLifetimes(conditionNode))
 					return false;
 
 				// Body
 				if (!this.generateNodePassCodeEnterScope(mangledPrefix+'body'))
 					return false;
 
-				if (!this.generateNodePassUnusedSymbols(bodyNode))
+				if (!this.generateNodePassSymbolLifetimes(bodyNode))
 					return false;
 
 				if (!this.generateNodePassCodeLeaveScope())
@@ -674,7 +672,7 @@ export class Generator {
 				this.usedSymbols[lhsStorageSymbol.mangledName]=true;
 
 				// Recurse for RHS value
-				if (!this.generateNodePassUnusedSymbols(rhsNode))
+				if (!this.generateNodePassSymbolLifetimes(rhsNode))
 					return false;
 
 				// Node-type specific logic
@@ -688,7 +686,7 @@ export class Generator {
 					// lhsNode.type==AstNodeType.ExpressionDereference
 
 					// Recurse for dereference expression
-					if (!this.generateNodePassUnusedSymbols(lhsNode.children[0]))
+					if (!this.generateNodePassSymbolLifetimes(lhsNode.children[0]))
 						return false;
 				}
 
@@ -698,7 +696,7 @@ export class Generator {
 			case AstNodeType.ExpressionAnd:
 				// Loop over operands
 				for(let i=0; i<node.children.length; ++i)
-					if (!this.generateNodePassUnusedSymbols(node.children[i]))
+					if (!this.generateNodePassSymbolLifetimes(node.children[i]))
 						return false;
 
 				return true;
@@ -706,11 +704,11 @@ export class Generator {
 			case AstNodeType.ExpressionEquality:
 			case AstNodeType.ExpressionInequality:
 				// Recurse for LHS
-				if (!this.generateNodePassUnusedSymbols(node.children[0]))
+				if (!this.generateNodePassSymbolLifetimes(node.children[0]))
 					return false;
 
 				// Recurse for RHS
-				if (!this.generateNodePassUnusedSymbols(node.children[1]))
+				if (!this.generateNodePassSymbolLifetimes(node.children[1]))
 					return false;
 
 				return true;
@@ -719,7 +717,7 @@ export class Generator {
 			case AstNodeType.ExpressionMultiplication:
 				// Loop over operands
 				for(let i=0; i<node.children.length; ++i)
-					if (!this.generateNodePassUnusedSymbols(node.children[i]))
+					if (!this.generateNodePassSymbolLifetimes(node.children[i]))
 						return false;
 
 				return true;
@@ -771,7 +769,7 @@ export class Generator {
 				// Handle arguments
 				let asmArgumentStackAdjustment=0;
 				for(let i=0; i<node.children.length; ++i) {
-					if (!this.generateNodePassUnusedSymbols(node.children[i]))
+					if (!this.generateNodePassSymbolLifetimes(node.children[i]))
 						return false;
 				}
 
@@ -798,7 +796,7 @@ export class Generator {
 				this.usedSymbols[storageSymbol.mangledName]=true;
 
 				// Generate code to place relevant array entry address into r0
-				if (!this.generateNodePassUnusedSymbols(node.children[0]))
+				if (!this.generateNodePassSymbolLifetimes(node.children[0]))
 					return false;
 
 				return true;
